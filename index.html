@@ -372,12 +372,23 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal)}
   </div>
 </section>
 
+
+<section id="parcels" class="section">
+  <div class="card">
+    <h2>Dispatch Parcels</h2>
+    <p class="muted">From dispatch worker</p>
+    <div class="row"><button class="bg bsm" onclick="loadParcels()">Refresh</button></div>
+  </div>
+  <div class="card"><div id="parcelView"></div></div>
+</section>
+
 <nav class="nav">
   <button class="nb on" data-s="home" onclick="go('home',this)"><span class="i">⌂</span>Home</button>
   <button class="nb" data-s="orders" onclick="go('orders',this)"><span class="i">☰</span>Orders</button>
   <button class="nb" data-s="stock" onclick="go('stock',this)"><span class="i">▣</span>Stock</button>
   <button class="nb" data-s="attend" onclick="go('attend',this)"><span class="i">👥</span>Attend</button>
   <button class="nb" data-s="log" onclick="go('log',this)"><span class="i">📋</span>Log</button>
+  <button class="nb" data-s="parcels" onclick="go('parcels',this)"><span class="i">📦</span>Parcels</button>
   <button class="nb" data-s="more" onclick="go('more',this)"><span class="i">⚙</span>More</button>
 </nav>
 
@@ -696,6 +707,7 @@ function go(id, btn){
   if(id==="hist") renderHist();
   if(id==="more") renderAudit();
   if(id==="log") renderLog();
+  if(id==="parcels") loadParcels();
 }
 window.go=go;
 
@@ -1583,6 +1595,27 @@ renderAudit();
 });
 // auto snapshot once per day load
 try{ const last=localStorage.getItem("pSnapDay"); if(last!==today()){ snapToday(true); localStorage.setItem("pSnapDay",today()); } }catch(e){}
+
+function loadParcels(){
+  const el=$("parcelView");
+  if(!el) return;
+  onValue(dataRef, snap=>{
+    const d=snap.val()||{};
+    const P=d.PARCELS||[];
+    if(!Array.isArray(P)||!P.length){ el.innerHTML='<div class="empty">No parcels yet.<br>Dispatch worker must Confirm & Save.</div>'; return; }
+    let total=0;
+    el.innerHTML=P.map((p,i)=>{
+      const map={};
+      (p.items||[]).forEach(it=>{ if(it&&it.model) map[it.model]=(map[it.model]||0)+(Number(it.qty)||0); });
+      const qty=Object.values(map).reduce((s,q)=>s+q,0);
+      total+=qty;
+      const text=Object.entries(map).map(([m,q])=>q+" "+m).join(" + ")||"—";
+      return `<div class="li" style="padding:12px;margin-bottom:8px"><b>Parcel ${i+1}</b>: ${text}<br><span style="color:#5eead4;font-weight:700">${qty} pcs</span></div>`;
+    }).join("")+`<div class="li" style="padding:12px;text-align:center;font-weight:800;background:#0d9488;color:#fff">Total: ${total} pcs</div>`;
+  });
+}
+window.loadParcels=loadParcels;
+
 </script>
 </body>
 </html>
