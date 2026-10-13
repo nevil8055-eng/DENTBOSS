@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Dispatch</title>
+<style>
+:root{--bg:#0a0f1a;--card:#1a2332;--text:#f1f5f9;--teal:#14b8a6;--border:rgba(148,163,184,.15)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui;padding:12px 12px 80px}
+.header{text-align:center;padding:12px;font-weight:750}
+.order{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
+.party{font-weight:750;color:#5eead4}
+.model{color:#fbbf24}
+button{border:0;border-radius:10px;padding:12px;background:#0d9488;color:#fff;font-weight:700}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#0a0f1a;border-top:1px solid var(--border);display:flex}
+.nav button{background:transparent;color:#94a3b8;border-radius:0;flex:1}
+.nav button.on{color:var(--teal);background:rgba(20,184,166,.15)}
+.section{display:none}.section.on{display:block}
+input,select{width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var(--border);border-radius:8px;margin:4px 0}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+.row{display:flex;gap:8px;margin-top:8px}
+.row button{flex:1}
+.parties{display:flex;gap:6px;overflow-x:auto;padding:6px 0}
+.parties button{padding:8px 12px;border-radius:20px;background:#1e293b;color:#94a3b8;font-size:.8rem}
+.parties button.on{background:#0d9488;color:#fff}
+</style>
+</head>
+<body>
+<div class="header">Dispatch Dashboard</div>
+<section id="orders" class="section on">
+  <input id="q" placeholder="Search party or model..." oninput="renderOrders()">
+  <div id="partyBar" class="parties"></div>
+  <div id="list"></div>
+</section>
+<section id="parcels" class="section">
+  <div class="card"><b>Build Parcels</b></div>
+  <div id="parcelOrders"></div>
+  <div class="card" style="margin-top:12px">
+    <b>Parcels</b>
+    <div id="parcelSummary"></div>
+    <button onclick="addParcel()" style="width:100%;margin-top:8px">+ New Parcel</button>
+    <button onclick="confirmParcels()" style="width:100%;margin-top:8px;background:#16a34a">Confirm & Save</button>
+  </div>
+</section>
+<section id="today" class="section"><div class="card"><b>Today's Work</b><p style="color:#94a3b8;font-size:.8rem">Assigned by Boss</p></div><div id="todayList"></div></section>
+<nav class="nav">
+  <button class="on" onclick="show('orders',this)">Orders</button>
+  <button onclick="show('today',this)">Today</button>
+  <button onclick="show('parcels',this)">Parcels</button>
+</nav>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+const cfg={apiKey:"AIzaSyDgasnH2Jf05M2M48r8VmODPYXGOxqZVgU",authDomain:"d-ent-379f4.firebaseapp.com",databaseURL:"https://d-ent-379f4-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"d-ent-379f4"};
+const db=getDatabase(initializeApp(cfg));
+const dataRef=ref(db,"production");
+let O=[], RM={}, PARTY="", PARCELS=[{id:1,items:[]}], D=[];
+onValue(dataRef, snap=>{
+  const d=snap.val()||{};
+  O=Array.isArray(d.O)?d.O:[];
+  RM=d.RM||{};
+  D=d.D||[];
+  if(Array.isArray(d.PARCELS)&&d.PARCELS.length) PARCELS=d.PARCELS;
+  renderOrders();
+  renderParcels();
+});
+function show(id,btn){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("on"));
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("on"));
+  document.getElementById(id).classList.add("on");
+  if(btn) btn.classList.add("on");
+  if(id==="parcels") renderParcels();
+  if(id==="today") renderToday();
+}
+window.show=show;
+function renderOrders(){
+  const q=(document.getElementById("q").value||"").toLowerCase();
+  const parties=[...new Set(O.map(o=>o.p).filter(Boolean))];
+  document.getElementById("partyBar").innerHTML=`<button class="${!PARTY?"on":""}" onclick="setParty('')">All</button>`+parties.map(p=>`<button class="${PARTY===p?"on":""}" onclick="setParty('${p.replace(/'/g,"")}')">${p}</button>`).join("");
+  let L=O.filter(o=>Number(o.s||0)>0);
+  if(PARTY) L=L.filter(o=>o.p===PARTY);
+  if(q) L=L.filter(o=>(o.p+" "+o.m).toLowerCase().includes(q));
+  document.getElementById("list").innerHTML=L.map(o=>`
+    <div class="order"><div class="party">${o.p}</div><div class="model">${o.m} · ${o.d}</div>
+    <div>Dispatch <b>${o.x||0}</b> / ${o.s} (of ${o.q})</div>
+    <div class="row"><button onclick="chg(${o.id},-1)">−1</button><button onclick="chg(${o.id},1)">+1</button></div></div>`).join("")||"<div style='text-align:center;color:#64748b;padding:40px'>Nothing ready from stitching</div>";
+}
+window.setParty=p=>{PARTY=p;renderOrders();};
+window.chg=(id,d)=>{const o=O.find(x=>x.id==id);if(!o)return;o.x=Math.max(0,Math.min(o.s,Number(o.x||0)+d));set(dataRef,{O,RM,PARCELS});};
+function assigned(oid){let n=0;PARCELS.forEach(p=>(p.items||[]).forEach(it=>{if(it.oid===oid)n+=it.qty;}));return n;}
+function renderParcels(){
+  const ready=O.filter(o=>Number(o.s||0)>0);
+  document.getElementById("parcelOrders").innerHTML=ready.map(o=>{
+    const used=assigned(o.id), left=Math.max(0,o.s-used);
+    return `<div class="order"><div class="party">${o.p}</div><div class="model">${o.m} · Stitched ${o.s} · Left ${left}</div>
+    <div class="row"><input id="qty${o.id}" type="number" value="${Math.max(1,Math.min(1,left))}" style="flex:1">
+    <select id="par${o.id}" style="flex:1">${PARCELS.map((p,i)=>`<option value="${p.id}">Parcel ${i+1}</option>`).join("")}</select>
+    <button onclick="addItem(${o.id})" style="flex:1" ${left<1?"disabled":""}>Add</button></div></div>`;
+  }).join("")||"<div style='text-align:center;color:#64748b;padding:20px'>No stitched orders</div>";
+  let total=0;
+  document.getElementById("parcelSummary").innerHTML=PARCELS.map((p,i)=>{
+    const map={};(p.items||[]).forEach(it=>{map[it.model]=(map[it.model]||0)+it.qty;});
+    const qty=Object.values(map).reduce((s,q)=>s+q,0); total+=qty;
+    const text=Object.entries(map).map(([m,q])=>q+" "+m).join(" + ")||"—";
+    return `<div style="margin:6px 0;padding:8px;background:#111827;border-radius:8px"><b>Parcel ${i+1}</b>: ${text}<br><span style="color:#5eead4;font-weight:700">${qty} pcs</span>
+    <div style="margin-top:6px">${(p.items||[]).map((it,idx)=>`<button onclick="rmItem(${p.id},${idx})" style="padding:4px 8px;font-size:.75rem;margin:2px;background:#dc2626">× ${it.qty} ${it.model}</button>`).join("")}</div></div>`;
+  }).join("")+`<div style="margin-top:10px;padding:10px;background:#0d9488;border-radius:8px;text-align:center;font-weight:800">Total: ${total} pcs</div>`;
+}
+window.addParcel=()=>{PARCELS.push({id:Date.now(),items:[]});renderParcels();};
+window.addItem=oid=>{
+  const o=O.find(x=>x.id==oid); if(!o) return;
+  const left=o.s-assigned(oid);
+  const qty=Math.min(Number(document.getElementById("qty"+oid).value)||1, left);
+  if(qty<1) return alert("Nothing left");
+  const pid=Number(document.getElementById("par"+oid).value);
+  const p=PARCELS.find(x=>x.id==pid);
+  if(p){ p.items.push({model:o.m,qty,oid,party:o.p}); renderParcels(); }
+};
+window.rmItem=(pid,idx)=>{const p=PARCELS.find(x=>x.id==pid); if(p&&p.items[idx]){p.items.splice(idx,1);renderParcels();}};
+window.confirmParcels=()=>{
+  const clean=PARCELS.map(p=>({id:p.id, items:(p.items||[]).map(it=>({model:it.model,qty:it.qty,oid:it.oid,party:it.party||""}))}));
+  // Mark parcelled qty as dispatched
+  const added={};
+  clean.forEach(p=>(p.items||[]).forEach(it=>{ added[it.oid]=(added[it.oid]||0)+it.qty; }));
+  O.forEach(o=>{
+    if(added[o.id]){
+      o.x=Math.min(o.s, Number(o.x||0)+added[o.id]);
+    }
+  });
+  set(dataRef,{O,RM,PARCELS:clean}).then(()=>alert("Parcels saved · marked dispatched")).catch(e=>alert("Save failed: "+e.message));
+};
+function renderToday(){
+  const el=document.getElementById("todayList");
+  if(!el) return;
+  if(!D.length){ el.innerHTML="<div style='text-align:center;color:#64748b;padding:40px'>No work assigned today</div>"; return; }
+  el.innerHTML=D.map(w=>{
+    const o=O.find(x=>x.id==w.id);
+    if(!o) return "";
+    return `<div class="order"><div class="party">${o.p}</div><div class="model">${o.m} · ${o.d}</div><div>Qty ${w.q}</div></div>`;
+  }).join("");
+}
+</script>
+</body>
+</html>

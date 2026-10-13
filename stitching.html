@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Stitching</title>
+<style>
+:root{--bg:#0a0f1a;--card:#1a2332;--text:#f1f5f9;--border:rgba(148,163,184,.15)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui;padding:12px 12px 80px}
+.header{text-align:center;padding:12px;font-weight:750}
+.order{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
+.party{font-weight:750;color:#5eead4}
+.model{color:#fbbf24;font-size:.9rem}
+button{border:0;border-radius:10px;padding:12px;background:#16a34a;color:#fff;font-weight:700}
+.row{display:flex;gap:8px;margin-top:8px}
+.row button{flex:1}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#0a0f1a;border-top:1px solid var(--border);display:flex}
+.nav button{background:transparent;color:#94a3b8;border-radius:0;flex:1}
+.nav button.on{color:#14b8a6;background:rgba(20,184,166,.15)}
+.section{display:none}.section.on{display:block}
+input{width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="header">Stitching Dashboard</div>
+<section id="orders" class="section on">
+  <input id="q" placeholder="Search party or model..." oninput="render()">
+  <div id="partyBar" style="display:flex;gap:6px;overflow-x:auto;padding:6px 0;margin-bottom:8px"></div>
+  <div id="list"></div>
+</section>
+<section id="today" class="section">
+  <div class="card"><b>Today's Work</b><p style="color:#94a3b8;font-size:.8rem">Assigned by Boss</p></div>
+  <div id="todayList"></div>
+</section>
+<nav class="nav">
+  <button class="on" onclick="show('orders',this)">Orders</button>
+  <button onclick="show('today',this)">Today</button>
+</nav>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+const cfg={apiKey:"AIzaSyDgasnH2Jf05M2M48r8VmODPYXGOxqZVgU",authDomain:"d-ent-379f4.firebaseapp.com",databaseURL:"https://d-ent-379f4-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"d-ent-379f4"};
+const db=getDatabase(initializeApp(cfg));
+const dataRef=ref(db,"production");
+let O=[], RM={}, D=[];
+function show(id,btn){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("on"));
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("on"));
+  document.getElementById(id).classList.add("on");
+  if(btn) btn.classList.add("on");
+  if(id==="today") renderToday();
+}
+window.show=show;
+onValue(dataRef, snap=>{
+  const d=snap.val()||{};
+  O=d.O||[]; RM=d.RM||{}; D=d.D||[];
+  render();
+  renderToday();
+});
+let PARTY="";
+function render(){
+  const q=(document.getElementById("q").value||"").toLowerCase();
+  const parties=[...new Set(O.map(o=>o.p).filter(Boolean))];
+  const bar=document.getElementById("partyBar");
+  if(bar) bar.innerHTML=`<button class="${!PARTY?"on":""}" onclick="setParty('')" style="padding:8px 12px;border-radius:20px;background:${!PARTY?"#0d9488":"#1e293b"};color:#fff;font-size:.8rem">All</button>`+
+    parties.map(p=>`<button onclick="setParty('${p.replace(/'/g,"")}')" style="padding:8px 12px;border-radius:20px;background:${PARTY===p?"#0d9488":"#1e293b"};color:#fff;font-size:.8rem">${p}</button>`).join("");
+  let L=O.filter(o=>Number(o.c||0)>0);
+  if(PARTY) L=L.filter(o=>o.p===PARTY);
+  if(q) L=L.filter(o=>(o.p+" "+o.m).toLowerCase().includes(q));
+  document.getElementById("list").innerHTML=L.map(o=>`
+    <div class="order">
+      <div class="party">${o.p}</div>
+      <div class="model">${o.m} · ${o.d}</div>
+      <div>Stitch <b>${o.s}</b> / ${o.c} (of ${o.q})</div>
+      <div class="row">
+        <button onclick="chg(${o.id},-1)">−1</button>
+        <button onclick="chg(${o.id},1)">+1</button>
+      </div>
+    </div>`).join("")||"<div style='text-align:center;color:#64748b;padding:40px'>Nothing ready from cutting</div>";
+}
+function renderToday(){
+  const el=document.getElementById("todayList");
+  if(!el) return;
+  if(!D.length){ el.innerHTML="<div style='text-align:center;color:#64748b;padding:40px'>No work assigned today</div>"; return; }
+  el.innerHTML=D.map(w=>{
+    const o=O.find(x=>x.id==w.id);
+    if(!o) return "";
+    return `<div class="order"><div class="party">${o.p}</div><div class="model">${o.m} · ${o.d}</div><div>Qty ${w.q}</div></div>`;
+  }).join("");
+}
+window.setParty=function(p){ PARTY=p; render(); };
+window.chg=function(id,delta){
+  const o=O.find(x=>x.id==id); if(!o) return;
+  o.s=Math.max(0, Math.min(o.c, Number(o.s||0)+delta));
+  if(o.x>o.s) o.x=o.s;
+  set(dataRef,{O,RM,D});
+};
+</script>
+</body>
+</html>
