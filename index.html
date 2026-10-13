@@ -1,0 +1,1588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Production Control</title>
+<style>
+:root{--bg:#0a0f1a;--bg2:#111827;--card:#1a2332;--card2:#212c3d;--border:rgba(148,163,184,.15);--text:#f1f5f9;--muted:#94a3b8;--dim:#64748b;--teal:#14b8a6;--teal-dim:rgba(20,184,166,.15);--green:#22c55e;--green-dim:rgba(34,197,94,.15);--amber:#f59e0b;--amber-dim:rgba(245,158,11,.15);--red:#ef4444;--radius:14px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.4;padding-bottom:88px;min-height:100vh}
+.header{position:sticky;top:0;z-index:100;background:rgba(10,15,26,.95);padding:12px 14px 10px;border-bottom:1px solid var(--border);text-align:center}
+.header h1{font-size:1.2rem;font-weight:750}
+.header .sub{font-size:.7rem;color:var(--muted);font-weight:650;letter-spacing:.7px;text-transform:uppercase;margin-top:2px}
+.sync{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;font-size:.68rem;color:var(--dim)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+.dot.ok{background:#34d399}.dot.busy{background:#fbbf24}.dot.err{background:#f87171}
+.section{display:none}.section.on{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin:0 10px 12px}
+.card h2{font-size:1rem;font-weight:720;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.badge{font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:12px;background:var(--teal-dim);color:var(--teal)}
+.boss{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 10px}
+.bcard{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 10px;text-align:center}
+.bcard .ic{font-size:1.4rem;margin-bottom:4px}
+.bcard .lb{font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase}
+.bcard .vl{font-size:1.5rem;font-weight:800;margin-top:2px;color:var(--teal)}
+.bcard .sv{font-size:.7rem;color:var(--dim);margin-top:2px}
+.bcard.w .vl{color:var(--amber)}.bcard.d .vl{color:var(--red)}.bcard.g .vl{color:var(--green)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stat{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px 4px;text-align:center}
+.stat .n{font-size:1.15rem;font-weight:800;color:var(--teal)}
+.stat b{font-size:.62rem;color:var(--muted);font-weight:650;display:block}
+.rm{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.rmb{background:var(--card2);border-radius:8px;padding:8px 4px;text-align:center;border:1px solid var(--border)}
+.rmb .n{font-size:.95rem;font-weight:800;margin-top:2px}
+.rmb b{font-size:.6rem;color:var(--muted);font-weight:650}
+.g{color:#34d399}.w{color:#fbbf24}.b{color:#f87171}
+button{border:0;border-radius:10px;padding:11px 12px;min-height:42px;color:#fff;font-weight:650;font-size:.86rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+button:active{opacity:.85;transform:scale(.97)}
+.bp{background:#0d9488}.bs{background:#16a34a}.bw{background:#d97706}.bd{background:#dc2626}
+.bg{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.bsm{padding:7px 10px;min-height:34px;font-size:.78rem;border-radius:8px}
+.row{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.row button{flex:1 1 auto;min-width:90px}
+input,select{width:100%;padding:11px 12px;background:var(--bg2);color:var(--text);border:1.5px solid rgba(148,163,184,.25);border-radius:10px;font-size:16px}
+input:focus,select:focus{outline:none;border-color:var(--teal)}
+label{display:block;font-size:.66rem;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase}
+.grid{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:560px){.grid{grid-template-columns:1fr 1fr}}
+.olist{padding:0 10px 16px;display:flex;flex-direction:column;gap:8px}
+.oc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.oc.res{border-color:rgba(20,184,166,.4)}
+.otop{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+.op{font-size:1rem;font-weight:750}.om{font-size:.8rem;color:var(--muted);margin-top:1px}
+.qp{background:#0d9488;color:#fff;font-weight:800;font-size:.95rem;padding:5px 10px;border-radius:8px;min-width:40px;text-align:center}
+.meta{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0;font-size:.72rem;color:var(--muted)}
+.meta span{background:var(--bg2);padding:2px 7px;border-radius:6px;border:1px solid var(--border)}
+.track{display:flex;align-items:center;gap:2px;margin:6px 0}
+.step{flex:1;text-align:center;padding:4px 2px;border-radius:6px;font-size:.62rem;font-weight:800;background:var(--bg2);color:var(--dim);border:1px solid var(--border)}
+.step.dn{background:var(--green-dim);color:#6ee7b7}.step.cu{background:var(--amber-dim);color:#fcd34d}
+.bar{height:4px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.bf{height:100%;background:#14b8a6;border-radius:4px}
+.acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center}
+.acts button{flex:1;min-width:64px}
+.rb{display:inline-block;padding:2px 8px;border-radius:12px;background:var(--teal-dim);color:var(--teal);font-size:.64rem;font-weight:750;margin-top:4px}
+.dk{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.64rem;font-weight:750;margin-top:4px;margin-left:4px}
+.dk.yes{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.35)}
+.dk.no{background:var(--card2);color:var(--muted);border:1px solid var(--border)}
+.alist{display:flex;flex-direction:column;gap:6px}
+.arow{display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--card2);border-radius:10px;border:1px solid var(--border)}
+.an{flex:1;font-weight:650}
+.ab{display:flex;gap:5px}
+.ab button{min-width:48px;min-height:32px;padding:5px 8px;font-size:.72rem;border-radius:7px}
+.ab button.ap{background:#16a34a}.ab button.aa{background:#dc2626}.ab button.al{background:#d97706}
+.di{display:grid;grid-template-columns:28px 1fr auto;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);align-items:center}
+.di:last-child{border-bottom:0}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center;z-index:200}
+.modal.on{display:flex}
+.box{background:var(--card);border:1px solid var(--border);border-radius:18px 18px 0 0;padding:18px 14px 24px;width:100%;max-width:520px;max-height:88vh;overflow:auto}
+.box h2{font-size:1.1rem;margin-bottom:12px;text-align:center;font-weight:750}
+@media(min-width:560px){.modal{align-items:center;padding:14px}.box{border-radius:16px}}
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:150;background:rgba(10,15,26,.96);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:5px 2px calc(5px + env(safe-area-inset-bottom))}
+.nb{display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 6px;border-radius:10px;color:var(--dim);font-size:.62rem;font-weight:700;background:transparent;border:0;min-width:52px;min-height:auto}
+.nb .i{font-size:1.2rem}.nb.on{color:var(--teal);background:var(--teal-dim)}
+.muted{color:var(--muted);font-size:.82rem}
+.hint{font-size:.76rem;color:var(--dim);margin:8px 0;padding:9px 11px;background:var(--bg2);border-radius:8px;border:1px solid var(--border)}
+.empty{text-align:center;padding:28px 14px;color:var(--dim)}
+.pt{font-size:1rem;font-weight:750;margin-bottom:2px}.pd{font-size:.78rem;color:var(--muted);margin-bottom:10px}
+.fr{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:560px){.fr{grid-template-columns:2fr 1fr 1fr}}
+.bb{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;margin:8px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.bb .inf{font-size:.76rem;color:var(--muted);flex:1 1 100%}
+#file{display:none}
+.st{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.st h3{margin:0;font-size:.92rem}
+.hid{display:none}
+.li{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:6px}
+.li .r{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal)}
+.si{color:var(--teal);font-size:.72rem;margin-top:5px;font-weight:600}
+.qf{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.seg{display:flex;gap:0;border-radius:10px;overflow:hidden;border:1.5px solid rgba(148,163,184,.25)}
+.seg button{flex:1;border-radius:0;min-height:44px;background:var(--bg2);color:var(--muted);border:0;font-weight:700}
+.seg button.on{background:var(--teal-dim);color:var(--teal)}
+.hist-row{display:grid;grid-template-columns:72px 1fr;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.hist-row:last-child{border-bottom:0}
+.hist-day{font-weight:750;color:var(--teal)}
+.hist-det{color:var(--muted);line-height:1.55}
+
+.oc{transition:transform .15s ease,box-shadow .15s ease;cursor:grab}
+.oc:active{cursor:grabbing;transform:scale(.98)}
+.oc.dragging{opacity:.5;transform:scale(.95)}
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;margin:8px 10px;color:var(--muted);font-size:.8rem;transition:all .15s}
+.drop-zone.over{border-color:var(--teal);background:var(--teal-dim);color:var(--teal)}
+.stage-btns{display:flex;gap:6px;margin-top:8px}
+.stage-btns button{flex:1;min-height:48px;font-weight:750;font-size:.8rem}
+.stage-btns .cut{background:#d97706}
+.stage-btns .stitch{background:#16a34a}
+.stage-btns .disp{background:#0d9488}
+.oc.done{opacity:.8}
+.premium-header{background:linear-gradient(180deg,rgba(20,184,166,.12),transparent)}
+
+</style>
+</head>
+<body>
+<header class="header premium-header">
+  <h1>Production Control</h1>
+  <div class="sub">Boss Dashboard</div>
+  <div id="whoAmI" class="sync" style="font-size:.72rem;color:var(--teal);cursor:pointer" onclick="changeName()">You: —</div>
+  <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Starting...</span></div>
+</header>
+
+<section id="home" class="section on">
+  <div class="boss">
+    <div class="bcard" onclick="go('orders')">
+      <div class="ic">📦</div><div class="lb">Pending Orders</div>
+      <div class="vl" id="bp">0</div><div class="sv" id="bpq">0 pcs left</div>
+    </div>
+    <div class="bcard" id="bmc">
+      <div class="ic">🧵</div><div class="lb">Raw Material Free</div>
+      <div class="vl" id="bf">0</div><div class="sv">M² available</div>
+    </div>
+    <div class="bcard" onclick="openDay()">
+      <div class="ic">📋</div><div class="lb">Today's Work</div>
+      <div class="vl" id="bt">0</div><div class="sv">jobs planned</div>
+    </div>
+    <div class="bcard" onclick="go('attend')">
+      <div class="ic">👥</div><div class="lb">Attendance</div>
+      <div class="vl" id="ba">0</div><div class="sv" id="bas">present today</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Production Snapshot</h2>
+    <div class="stats">
+      <div class="stat"><b>Orders</b><div class="n" id="sA">0</div></div>
+      <div class="stat"><b>Cutting</b><div class="n" id="sC">0</div></div>
+      <div class="stat"><b>Stitching</b><div class="n" id="sD">0</div></div>
+      <div class="stat"><b>Ready</b><div class="n" id="sE">0</div></div>
+      <div class="stat"><b>Dispatched</b><div class="n" id="sF">0</div></div>
+      <div class="stat"><b>Remaining</b><div class="n" id="sG">0</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Available Raw Material <span class="badge" id="rmB">OK</span></h2>
+    <div class="rm">
+      <div class="rmb"><b>TOTAL</b><div class="n" id="rt">0</div></div>
+      <div class="rmb"><b>USED</b><div class="n" id="ru">0</div></div>
+      <div class="rmb"><b>RESERVED</b><div class="n" id="rr">0</div></div>
+      <div class="rmb"><b>FREE</b><div class="n g" id="rf">0</div></div>
+    </div>
+    <p id="rmM" class="si" style="margin-top:8px"></p>
+  </div>
+  <div class="card">
+    <h2>Today's Work <span class="badge" id="tB">0</span></h2>
+    <div id="tPrev"></div>
+    <div class="row">
+      <button class="bw" onclick="openDay()">Plan / Update</button>
+      <button class="bg" onclick="printDay()">Print</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Attendance <span class="badge" id="aB">0/0</span></h2>
+    <div id="aPrev"></div>
+    <div class="row"><button class="bp" onclick="go('attend')">Mark Attendance</button></div>
+  </div>
+  <div class="card">
+    <h2>Quick Actions</h2>
+    <div class="row">
+      <button class="bp" onclick="openAdd()">+ Add Order</button>
+      <button class="bg" onclick="openSum()">Summary</button>
+    </div>
+    <div class="row">
+      <button class="bg" onclick="go('hist')">30-Day History</button>
+      <button class="bg" onclick="doBackup()">Backup</button>
+    </div>
+    <div class="row">
+      <button class="bg" onclick="pickFile()">Restore</button>
+      <button class="bg" onclick="loadSample()">Sample</button>
+    </div>
+    <input id="file" type="file" accept=".csv,text/csv">
+    <p class="muted" style="margin-top:8px;text-align:center;font-size:.74rem">Cloud sync · 30-day history kept</p>
+  </div>
+</section>
+
+<section id="orders" class="section">
+  <div class="card">
+    <div class="pt">Orders</div>
+    <div class="pd">Drag a card onto a stage or use the big buttons</div>
+    <div class="drop-zone" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="dropStage(event,'c')">Drop here to mark CUT</div>
+    <div class="drop-zone" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="dropStage(event,'s')">Drop here to mark STITCH</div>
+    <div class="drop-zone" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="dropStage(event,'x')">Drop here to mark DISPATCH</div>
+    <div class="fr">
+      <div><label>Search</label><input id="q" oninput="softRender()" placeholder="Party, Model..."></div>
+      <div><label>Status</label>
+        <select id="f" onchange="softRender()">
+          <option value="ALL">All orders</option>
+          <option value="P">Pending only</option>
+          <option value="CUTTING">Needs Cutting</option>
+          <option value="STITCHING">Ready for Stitching</option>
+          <option value="READY">Ready to Dispatch</option>
+          <option value="COMPLETED">Dispatched</option>
+        </select>
+      </div>
+      <div><label>Sort</label>
+        <select id="so" onchange="softRender()">
+          <option value="D">Added</option>
+          <option value="M">Model</option>
+          <option value="P">Party</option>
+          <option value="U">Due Date</option>
+          <option value="Q">Qty</option>
+          <option value="S">Status</option>
+          <option value="R">Reserved</option>
+          <option value="DK">With Dickie</option>
+        </select>
+      </div>
+    </div>
+    <div class="si" id="si">Showing all orders</div>
+    <div class="qf">
+      <button class="bg bsm" onclick="filtR()">Reserved</button>
+      <button class="bg bsm" onclick="filtP()">Pending</button>
+      <button class="bg bsm" onclick="filtDk()">With Dickie</button>
+    </div>
+    <div class="bb">
+      <button class="bp bsm" onclick="doReserve()">Reserve Selected</button>
+      <button class="bg bsm" onclick="clrSel()">Clear</button>
+      <span class="inf" id="bi">Select orders to reserve</span>
+    </div>
+  </div>
+  <div id="oc" class="olist"></div>
+</section>
+
+<section id="stock" class="section">
+  <div class="card">
+    <h2>Ready Stock</h2>
+    <div class="grid">
+      <div><label>Model</label><input id="rmodel" placeholder="Baleno"></div>
+      <div><label>Qty</label><input id="rqty" type="number" min="0" placeholder="10"></div>
+    </div>
+    <div class="row"><button class="bp" onclick="saveReady()">Add / Update</button></div>
+    <div id="rList" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <div class="st"><h3>Raw Material by Design</h3>
+      <button class="bg bsm" onclick="togDes()"><span id="dt">Hide</span></button>
+    </div>
+    <div id="dSec">
+      <div class="grid">
+        <div><label>Design</label><input id="dd" placeholder="3D BLACK"></div>
+        <div><label>Rolls</label><input id="dr" type="number" min="0" step="0.01" placeholder="10"></div>
+      </div>
+      <div class="row"><button class="bp" onclick="saveDes()">Add / Update</button></div>
+      <div class="rmb" style="margin-top:10px;text-align:left;padding:10px">
+        <b>Roll Size</b><div class="n" id="rsv" style="font-size:1.1rem">45 M²</div>
+        <button class="bg bsm" onclick="setRS()" style="margin-top:6px">Set Size</button>
+      </div>
+      <div class="rmb" style="margin-top:8px;text-align:left;padding:10px">
+        <b>Dickie Extra</b>
+        <p class="muted" style="margin-top:4px;font-size:.72rem">Each model has its own Dickie extra (e.g. Swift 3, Dzire 1.5). Set under <b>M² per Car</b> below.</p>
+      </div>
+      <div id="dList" style="margin-top:10px"></div>
+    </div>
+  </div>
+  <div class="card">
+    <button class="bg" style="width:100%" onclick="togRate()"><span id="rtT">Show M² per Car (mat only)</span></button>
+    <div id="rSec" class="hid" style="margin-top:10px">
+      <p class="muted" style="margin-bottom:8px">Set mat M² and Dickie extra per model (different for each car).</p>
+      <div class="grid">
+        <div><label>Model</label><input id="rm" placeholder="Baleno"></div>
+        <div><label>M² / Car (mat only)</label><input id="rv" type="number" min="0" step="0.01" placeholder="5"></div>
+        <div><label>Dickie Extra M²</label><input id="rdk" type="number" min="0" step="0.01" placeholder="2"></div>
+      </div>
+      <div class="row"><button class="bp" onclick="saveRate()">Add / Update</button></div>
+      <div id="rateL" style="margin-top:10px"></div>
+    </div>
+  </div>
+</section>
+
+<section id="attend" class="section">
+  <div class="card">
+    <h2>Workers</h2>
+    <div class="grid"><div><label>Name</label><input id="wn" placeholder="Ramesh"></div></div>
+    <div class="row"><button class="bp" onclick="addW()">Add Worker</button></div>
+  </div>
+  <div class="card">
+    <h2>Today — <span id="aDate"></span></h2>
+    <div id="aList" class="alist"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="bs" onclick="saveAtt()">Save</button>
+      <button class="bg" onclick="allP()">All Present</button>
+    </div>
+  </div>
+</section>
+
+<section id="hist" class="section">
+  <div class="card">
+    <h2>30-Day History</h2>
+    <p class="muted">Daily production + attendance (auto-saved, last 30 days)</p>
+    <div class="row" style="margin-top:8px">
+      <button class="bp bsm" onclick="snapToday()">Save Today Snapshot</button>
+      <button class="bg bsm" onclick="renderHist()">Refresh</button>
+      <button class="bs bsm" onclick="exportHistCSV()">Download 30-Day CSV</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Daily Log</h2>
+    <div id="histList"></div>
+  </div>
+</section>
+
+
+<section id="log" class="section">
+  <div class="card">
+    <h2>Change Log</h2>
+    <p class="muted">Who changed what and when</p>
+    <div class="row" style="margin-top:8px">
+      <button class="bg bsm" onclick="renderLog()">Refresh</button>
+      <button class="bs bsm" onclick="exportLogCSV()">Download Log CSV</button>
+    </div>
+  </div>
+  <div class="card">
+    <div id="logList"></div>
+  </div>
+</section>
+
+<section id="more" class="section">
+  <div class="card">
+    <h2>Actions</h2>
+    <div class="row"><button class="bp" onclick="openAdd()">+ Add Order</button><button class="bw" onclick="openDay()">Today's Work</button></div>
+    <div class="row"><button class="bg" onclick="openSum()">Summary</button><button class="bg" onclick="go('hist')">30-Day History</button></div>
+    <div class="row"><button class="bg" onclick="doBackup()">Backup</button><button class="bg" onclick="pickFile()">Restore</button></div>
+    <div class="row"><button class="bw" onclick="forceSync()">Force Sync</button></div>
+    <div class="row"><button class="bs" onclick="exportSumCSV()">Summary CSV</button><button class="bs" onclick="exportHistCSV()">30-Day CSV</button></div>
+    <div class="row"><button class="bg" onclick="loadSample()">Sample</button><button class="bd" onclick="delAll()">Delete All Orders</button></div>
+  </div>
+  
+  <div class="card">
+    <h2>Who is editing</h2>
+    <p class="muted" id="myNameDisplay">Not set</p>
+    <div class="row"><button class="bg" onclick="changeName()">Change My Name</button></div>
+    <h3 style="margin:12px 0 6px;font-size:.9rem">Recent edits</h3>
+    <div id="auditList" style="max-height:220px;overflow:auto"></div>
+  </div>
+
+  <div class="card">
+    <h2>How material works</h2>
+    <ol style="padding-left:16px;color:var(--muted);font-size:.88rem;line-height:1.75">
+      <li><b>Stock → M² per Car</b> = car mat only (e.g. Baleno 5)</li>
+      <li><b>Dickie Extra</b> = per model (Swift 3, Dzire 1.5, etc.) when With Dickie</li>
+      <li><b>With Dickie</b> = mat + that model's Dickie extra</li>
+      <li><b>Without Dickie</b> uses mat only (5 M²)</li>
+      <li>30-day history keeps attendance + production daily</li>
+    </ol>
+  </div>
+</section>
+
+<nav class="nav">
+  <button class="nb on" data-s="home" onclick="go('home',this)"><span class="i">⌂</span>Home</button>
+  <button class="nb" data-s="orders" onclick="go('orders',this)"><span class="i">☰</span>Orders</button>
+  <button class="nb" data-s="stock" onclick="go('stock',this)"><span class="i">▣</span>Stock</button>
+  <button class="nb" data-s="attend" onclick="go('attend',this)"><span class="i">👥</span>Attend</button>
+  <button class="nb" data-s="log" onclick="go('log',this)"><span class="i">📋</span>Log</button>
+  <button class="nb" data-s="more" onclick="go('more',this)"><span class="i">⚙</span>More</button>
+</nav>
+
+<div class="modal" id="mAdd">
+  <div class="box">
+    <h2>Add Order</h2>
+    <div class="grid">
+      <div><label>Party</label><input id="mp" list="dlP"></div>
+      <div><label>Model</label><input id="mm" list="dlM"></div>
+      <div><label>Design</label><input id="md" list="dlD"></div>
+      <div><label>Due</label><input id="mu" type="date"></div>
+      <div><label>Qty</label><input id="mq" type="number" min="1"></div>
+      <div>
+        <label>Dickie</label>
+        <div class="seg">
+          <button type="button" id="addDkNo" class="on" onclick="setAddDk(false)">Without</button>
+          <button type="button" id="addDkYes" onclick="setAddDk(true)">With Dickie</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint" id="addHint">Mat only. Model rate must exist in Stock.</p>
+    <datalist id="dlP"></datalist><datalist id="dlM"></datalist><datalist id="dlD"></datalist>
+    <div class="row" style="margin-top:14px">
+      <button class="bp" onclick="saveAdd()">Save</button>
+      <button class="bg" onclick="closeM('mAdd')">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="mEdit">
+  <div class="box">
+    <h2>Edit Order</h2>
+    <div class="grid">
+      <div><label>Party</label><input id="ep"></div>
+      <div><label>Model</label><input id="em"></div>
+      <div><label>Design</label><input id="ed"></div>
+      <div><label>Due</label><input id="eu" type="date"></div>
+      <div><label>Qty</label><input id="eq" type="number"></div>
+      <div><label>Cut</label><input id="ec" type="number"></div>
+      <div><label>Stitch</label><input id="es" type="number"></div>
+      <div><label>Dispatch</label><input id="ex" type="number" oninput="syncParcelTotal()"></div>
+      <div>
+        <label>Dickie</label>
+        <div class="seg">
+          <button type="button" id="edDkNo" class="on" onclick="setEdDk(false)">Without</button>
+          <button type="button" id="edDkYes" onclick="setEdDk(true)">With Dickie</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint" id="edHint"></p>
+    <div style="margin-top:10px">
+      <label>Parcels (split dispatch)</label>
+      <p class="muted" style="font-size:.72rem;margin-bottom:6px">e.g. out of 10 → 3 in Parcel 1, 7 in Parcel 2. Total must equal Dispatch qty.</p>
+      <div id="parcelList"></div>
+      <div class="row" style="margin-top:6px">
+        <button type="button" class="bg bsm" onclick="addParcelRow()">+ Add Parcel</button>
+        <span class="muted" id="parcelSum" style="align-self:center;font-size:.78rem"></span>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="bp" onclick="saveEdit()">Save</button>
+      <button class="bg" onclick="closeM('mEdit')">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="mDay">
+  <div class="box">
+    <h2>Today's Work</h2>
+    <p class="muted">Tick jobs + enter qty</p>
+    <div id="days"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="bp" onclick="saveDay()">Save</button>
+      <button class="bg" onclick="printDay()">Print</button>
+      <button class="bg" onclick="closeM('mDay')">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="mSum">
+  <div class="box" style="max-width:900px">
+    <h2>Summary</h2>
+    <div id="sumC"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="bp" onclick="printSum()">Print</button>
+      <button class="bs" onclick="exportSumCSV()">Summary CSV</button>
+      <button class="bg" onclick="closeM('mSum')">Close</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal" id="mName">
+  <div class="box">
+    <h2>Who is using this phone?</h2>
+    <p class="muted" style="text-align:center;margin-bottom:12px">Enter your name. It will be recorded with every change you make.</p>
+    <label>Your Name</label>
+    <input id="userNameIn" placeholder="e.g. Nevil" autocomplete="name">
+    <div class="row" style="margin-top:14px">
+      <button class="bp" onclick="saveUserName()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+const cfg = {
+  apiKey:"AIzaSyDgasnH2Jf05M2M48r8VmODPYXGOxqZVgU",
+  authDomain:"d-ent-379f4.firebaseapp.com",
+  databaseURL:"https://d-ent-379f4-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"d-ent-379f4",
+  storageBucket:"d-ent-379f4.firebasestorage.app",
+  messagingSenderId:"258553846735",
+  appId:"1:258553846735:web:7f52a420af12125cf1d0ba"
+};
+const db = getDatabase(initializeApp(cfg));
+const dataRef = ref(db, "production");
+
+let O=[], NID=1, EDIT=null, D=[];
+let RM={rollSize:45, dickieRates:{}, ready:{}, rates:{}, designs:{}};
+let W=[], A={}, H={}; // H = 30-day history { "YYYY-MM-DD": {...} }
+let remote=false, saveTimer=null, renderTimer=null;
+let addDk=false, edDk=false;
+let DEV=[], AUDIT=[]; // devices + recent edits
+let MY_ID="", MY_NAME="";
+
+const $ = id => document.getElementById(id);
+const n = x => Math.max(0, Math.floor(Number(x)||0));
+const mk = v => String(v||"").trim().toLowerCase();
+const dk = v => String(v||"").trim().toLowerCase();
+const esc = v => String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const today = () => new Date().toISOString().slice(0,10);
+
+function getDeviceId(){
+  let id=localStorage.getItem("pDev");
+  if(!id){ id="d"+Date.now().toString(36)+Math.random().toString(36).slice(2,8); localStorage.setItem("pDev",id); }
+  return id;
+}
+function getMyName(){ return localStorage.getItem("pName")||""; }
+function setMyName(n){ localStorage.setItem("pName",n); MY_NAME=n; updateWhoAmI(); }
+function updateWhoAmI(){
+  const el=$("whoAmI");
+  if(el) el.textContent=MY_NAME?("You: "+MY_NAME):"Set name";
+}
+function ensureName(){
+  MY_ID=getDeviceId();
+  MY_NAME=getMyName();
+  if(!MY_NAME){ openM("mName"); return false; }
+  updateWhoAmI();
+  registerDevice();
+  return true;
+}
+function saveUserName(){
+  const n=($("userNameIn").value||"").trim();
+  if(!n) return alert("Enter your name");
+  setMyName(n);
+  closeM("mName");
+  registerDevice();
+  alert("Hello "+n+" — your edits will be tagged with your name");
+}
+window.saveUserName=saveUserName;
+function registerDevice(){
+  if(!MY_ID||!MY_NAME) return;
+  const now=Date.now();
+  const i=DEV.findIndex(d=>d.id===MY_ID);
+  if(i>=0){ DEV[i].name=MY_NAME; DEV[i].last=now; }
+  else DEV.push({id:MY_ID,name:MY_NAME,last:now});
+  // keep only last 20 devices
+  if(DEV.length>20) DEV=DEV.slice(-20);
+  scheduleSave();
+}
+function logEdit(action, detail){
+  if(!AUDIT) AUDIT=[];
+  AUDIT.push({t:Date.now(),by:MY_NAME||"Unknown",action,detail:String(detail||"").slice(0,120)});
+  if(AUDIT.length>80) AUDIT=AUDIT.slice(-80);
+}
+
+
+function setSync(s){
+  const d=$("syncDot"), t=$("syncText");
+  if(!d||!t) return;
+  d.className="dot "+(s==="ok"?"ok":s==="busy"?"busy":"err");
+  t.textContent=s==="ok"?"Cloud synced":s==="busy"?"Saving...":"Offline";
+}
+
+let saving=false;
+function scheduleSave(){
+  if(remote || saving) return;
+  clearTimeout(saveTimer);
+  setSync("busy");
+  saveTimer=setTimeout(doSave, 600);
+}
+function doSave(){
+  if(remote || saving) return;
+  const hadOrders = Number(localStorage.getItem("pHadOrders")||0);
+  const allowEmpty = localStorage.getItem("pAllowEmpty")==="1";
+  if(O.length===0 && hadOrders>0 && !allowEmpty){
+    setSync("err");
+    return;
+  }
+  if(allowEmpty) localStorage.removeItem("pAllowEmpty");
+  pruneHistory();
+  try{
+    localStorage.setItem("pO",JSON.stringify(O));
+    localStorage.setItem("pD",JSON.stringify(D));
+    localStorage.setItem("pN",String(NID));
+    localStorage.setItem("pR",JSON.stringify(RM));
+    localStorage.setItem("pW",JSON.stringify(W));
+    localStorage.setItem("pA",JSON.stringify(A));
+    localStorage.setItem("pH",JSON.stringify(H));
+    localStorage.setItem("pDEV",JSON.stringify(DEV));
+    localStorage.setItem("pAUDIT",JSON.stringify(AUDIT));
+    if(O.length>0) localStorage.setItem("pHadOrders","1");
+  }catch(e){}
+  saving=true;
+  const payload={O,D,NID,RM,W,A,H,DEV,AUDIT,t:Date.now()};
+  const timeout=setTimeout(()=>{ saving=false; setSync("err"); }, 12000);
+  set(dataRef,payload)
+    .then(()=>{ clearTimeout(timeout); saving=false; setSync("ok"); })
+    .catch(()=>{ clearTimeout(timeout); saving=false; setSync("err"); });
+}
+function forceSync(){
+  saving=false;
+  clearTimeout(saveTimer);
+  doSave();
+  alert("Sync started");
+}
+window.forceSync=forceSync;
+
+function pruneHistory(){
+  const cutoff = Date.now() - 30*24*60*60*1000;
+  Object.keys(H||{}).forEach(k=>{
+    const t = new Date(k+"T12:00:00").getTime();
+    if(!isFinite(t) || t < cutoff) delete H[k];
+  });
+  Object.keys(A||{}).forEach(k=>{
+    const t = new Date(k+"T12:00:00").getTime();
+    if(!isFinite(t) || t < cutoff) delete A[k];
+  });
+}
+
+function applyRemote(data){
+  if(!data) return;
+  remote=true;
+  O=Array.isArray(data.O)?data.O:[];
+  D=Array.isArray(data.D)?data.D:[];
+  NID=Number(data.NID)||1;
+  RM=data.RM&&typeof data.RM==="object"?data.RM:{rollSize:45,dickieRates:{},ready:{},rates:{},designs:{}};
+  RM.rollSize=Number(RM.rollSize)||45;
+  RM.dickieRates=RM.dickieRates&&typeof RM.dickieRates==="object"?RM.dickieRates:{};
+  // migrate old global dickieExtra if present
+  if(RM.dickieExtra!=null && !Object.keys(RM.dickieRates).length){ Object.keys(RM.rates||{}).forEach(k=>{RM.dickieRates[k]=Number(RM.dickieExtra)||2;}); }
+  RM.ready=RM.ready&&typeof RM.ready==="object"?RM.ready:{};
+  RM.rates=RM.rates&&typeof RM.rates==="object"?RM.rates:{};
+  RM.designs=RM.designs&&typeof RM.designs==="object"?RM.designs:{};
+  W=Array.isArray(data.W)?data.W:[];
+  A=data.A&&typeof data.A==="object"?data.A:{};
+  H=data.H&&typeof data.H==="object"?data.H:{};
+  DEV=Array.isArray(data.DEV)?data.DEV:[];
+  AUDIT=Array.isArray(data.AUDIT)?data.AUDIT:[];
+  O.forEach(o=>{
+    o.q=n(o.q);o.c=n(o.c);o.s=n(o.s);o.x=n(o.x);
+    o.matUsed=Number(o.matUsed)||0;o.matReserved=Number(o.matReserved)||0;
+    o.dickie=!!o.dickie; o.parcels=Array.isArray(o.parcels)?o.parcels:[];
+  });
+  remote=false;
+  if(O.length>0) localStorage.setItem("pHadOrders","1");
+  fullRender();
+}
+
+function loadLocal(){
+  try{
+    O=JSON.parse(localStorage.getItem("pO")||"[]");
+    D=JSON.parse(localStorage.getItem("pD")||"[]");
+    NID=Number(localStorage.getItem("pN"))||1;
+    RM=JSON.parse(localStorage.getItem("pR")||'{"rollSize":45,"dickieRates":{},"ready":{},"rates":{},"designs":{}}');
+    RM.rollSize=Number(RM.rollSize)||45;
+    RM.dickieRates=RM.dickieRates&&typeof RM.dickieRates==="object"?RM.dickieRates:{};
+    if(RM.dickieExtra!=null && !Object.keys(RM.dickieRates).length){ Object.keys(RM.rates||{}).forEach(k=>{RM.dickieRates[k]=Number(RM.dickieExtra)||2;}); }
+    RM.ready=RM.ready||{}; RM.rates=RM.rates||{}; RM.designs=RM.designs||{};
+    W=JSON.parse(localStorage.getItem("pW")||"[]");
+    A=JSON.parse(localStorage.getItem("pA")||"{}");
+    H=JSON.parse(localStorage.getItem("pH")||"{}");
+    DEV=JSON.parse(localStorage.getItem("pDEV")||"[]");
+    AUDIT=JSON.parse(localStorage.getItem("pAUDIT")||"[]");
+    O.forEach(o=>{o.q=n(o.q);o.c=n(o.c);o.s=n(o.s);o.x=n(o.x);o.matUsed=Number(o.matUsed)||0;o.matReserved=Number(o.matReserved)||0;o.dickie=!!o.dickie; o.parcels=Array.isArray(o.parcels)?o.parcels:[];});
+  }catch(e){O=[];D=[];NID=1;RM={rollSize:45,dickieRates:{},ready:{},rates:{},designs:{}};W=[];A={};H={};}
+}
+
+onValue(dataRef, snap=>{
+  const data=snap.val();
+  if(data && (Array.isArray(data.O)&&data.O.length>0 || (data.RM&&Object.keys(data.RM.rates||{}).length))){
+    setSync("ok"); applyRemote(data);
+  } else {
+    // Cloud empty or wiped — keep local if we have it
+    setSync("ok");
+    if(O.length>0 || (RM.rates&&Object.keys(RM.rates).length)){
+      scheduleSave(); // push local back to cloud
+    }
+  }
+}, ()=>setSync("err"));
+
+function go(id, btn){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("on"));
+  document.querySelectorAll(".nb").forEach(b=>b.classList.remove("on"));
+  $(id).classList.add("on");
+  if(btn) btn.classList.add("on");
+  else {
+    const map={hist:"more"};
+    const b=document.querySelector('.nb[data-s="'+(map[id]||id)+'"]');
+    if(b) b.classList.add("on");
+  }
+  window.scrollTo(0,0);
+  if(id==="orders"){ if(!$("f").value)$("f").value="ALL"; softRender(); }
+  if(id==="attend") renderAtt();
+  if(id==="stock") renderStock();
+  if(id==="hist") renderHist();
+  if(id==="more") renderAudit();
+  if(id==="log") renderLog();
+}
+window.go=go;
+
+function openM(id){ $(id).classList.add("on"); $(id).style.display="flex"; }
+function closeM(id){ $(id).classList.remove("on"); $(id).style.display="none"; }
+window.closeM=closeM;
+
+/* rates */
+function baseRate(m){ const f=Object.keys(RM.rates).find(k=>mk(k)===mk(m)); return f?Number(RM.rates[f])||0:0; }
+function dickieRate(m){ const f=Object.keys(RM.dickieRates||{}).find(k=>mk(k)===mk(m)); return f?Number(RM.dickieRates[f])||0:0; }
+function rateOf(o){ return baseRate(o.m) + (o.dickie ? dickieRate(o.m) : 0); }
+function rate(m, withDk){ return baseRate(m) + (withDk ? dickieRate(m) : 0); }
+function ready(m){ const f=Object.keys(RM.ready).find(k=>mk(k)===mk(m)); return f?n(RM.ready[f]):0; }
+function dInfo(d){ const f=Object.keys(RM.designs).find(k=>dk(k)===dk(d)); if(!f)return{name:String(d||"").trim(),rolls:0,used:0,reserved:0}; const x=RM.designs[f]; return{name:f,rolls:Number(x.rolls)||0,used:Number(x.used)||0,reserved:Number(x.reserved)||0}; }
+function dFree(d){ const x=dInfo(d); return x.rolls*RM.rollSize-x.used-x.reserved; }
+function totRaw(){ return Object.keys(RM.designs).reduce((s,k)=>s+Number(RM.designs[k].rolls||0)*Number(RM.rollSize||45),0); }
+function totUsed(){ return Object.keys(RM.designs).reduce((s,k)=>s+Number(RM.designs[k].used||0),0); }
+function totRes(){ return Object.keys(RM.designs).reduce((s,k)=>s+Number(RM.designs[k].reserved||0),0); }
+function totFree(){ return totRaw()-totUsed()-totRes(); }
+function st(o){ if(o.x>=o.q)return"COMPLETED"; if(o.s>=o.q)return"READY"; if(o.c>=o.q)return"STITCHING"; return"CUTTING"; }
+function pend(o){ return Number(o.x||0)<Number(o.q||0); }
+
+function softRender(){ clearTimeout(renderTimer); renderTimer=setTimeout(fullRender, 10); }
+function fullRender(){
+  let qy=0,c=0,s=0,x=0,rd=0,rm=0,pc=0;
+  O.forEach(o=>{qy+=o.q;c+=o.c;s+=o.s;x+=o.x;rd+=Math.max(0,o.s-o.x);rm+=Math.max(0,o.q-o.x);if(pend(o))pc++;});
+  $("sA").textContent=O.length; $("sC").textContent=c; $("sD").textContent=s;
+  $("sE").textContent=rd; $("sF").textContent=x; $("sG").textContent=rm;
+  $("bp").textContent=pc; $("bpq").textContent=rm+" pcs left";
+  $("bt").textContent=D.length; $("tB").textContent=D.length;
+
+  const free=totFree();
+  $("rt").textContent=totRaw().toFixed(0); $("ru").textContent=totUsed().toFixed(0);
+  $("rr").textContent=totRes().toFixed(0); $("rf").textContent=free.toFixed(0);
+  $("rf").className="n "+(free<0?"b":free<10?"w":"g");
+  $("bf").textContent=free.toFixed(0);
+  const mc=$("bmc"); mc.className="bcard"+(free<0?" d":free<20?" w":" g");
+  $("rmB").textContent=free<0?"LOW":free<20?"CHECK":"OK";
+  $("rmM").textContent=free<0?"⚠ Stock low — order more material.":"Mat rate + Dickie extra when With Dickie.";
+
+  if(D.length){
+    $("tPrev").innerHTML=D.map(w=>{
+      const o=O.find(x=>x.id==w.id); if(!o)return"";
+      return `<div class="di"><span style="font-weight:800;color:var(--teal)">${w.q}</span><div><b>${esc(o.p)}</b><br><span class="muted">${esc(o.m)} / ${esc(o.d)}${o.dickie?" · Dickie":""}</span></div><span class="muted" style="font-size:.72rem">${st(o)}</span></div>`;
+    }).join("");
+  } else $("tPrev").innerHTML=`<div class="empty" style="padding:12px">No work planned</div>`;
+
+  renderOrders();
+  updateBossAtt();
+  fillSug();
+}
+
+function renderOrders(){
+  const q=($("q").value||"").toLowerCase().trim();
+  const f=$("f").value||"ALL";
+  const so=$("so").value||"D";
+  let L=O.filter(o=>{
+    const party=(o.p||"").toLowerCase();
+    const model=(o.m||"").toLowerCase();
+    const design=(o.d||"").toLowerCase();
+    if(q && !party.includes(q) && !model.includes(q) && !design.includes(q)) return false;
+    if(f==="P") return pend(o);
+    if(f==="COMPLETED") return Number(o.x||0)>=Number(o.q||0);
+    if(f==="CUTTING") return Number(o.c||0)<Number(o.q||0); // still needs cutting
+    if(f==="STITCHING") return Number(o.c||0)>=Number(o.q||0) && Number(o.s||0)<Number(o.q||0); // cutting done, stitching not done
+    if(f==="READY") return Number(o.s||0)>=Number(o.q||0) && Number(o.x||0)<Number(o.q||0); // stitched, not dispatched
+    if(f==="ALL") return true;
+    return st(o)===f;
+  });
+  if(so==="M") L.sort((a,b)=>String(a.m||"").localeCompare(String(b.m||"")));
+  else if(so==="P") L.sort((a,b)=>String(a.p||"").localeCompare(String(b.p||"")));
+  else if(so==="U") L.sort((a,b)=>String(a.u||"").localeCompare(String(b.u||"")));
+  else if(so==="Q") L.sort((a,b)=>Number(b.q||0)-Number(a.q||0));
+  else if(so==="S"){ const ord={CUTTING:1,STITCHING:2,READY:3,COMPLETED:4}; L.sort((a,b)=>ord[st(a)]-ord[st(b)]); }
+  else if(so==="D") L.sort((a,b)=>Number(b.id||0)-Number(a.id||0)); // newest first
+  else if(so==="R") L=L.filter(o=>Number(o.matReserved||0)>0);
+  else if(so==="DK") L=L.filter(o=>!!o.dickie);
+  const labels={ALL:"all orders",P:"pending only",COMPLETED:"dispatched",CUTTING:"needs cutting",STITCHING:"ready for stitching",READY:"ready to dispatch"};
+  const sortLabel=so==="R"?" · reserved":so==="DK"?" · with dickie":"";
+  $("si").textContent="Showing "+L.length+" of "+O.length+" · "+(labels[f]||f.toLowerCase())+sortLabel;
+
+  if(!L.length){ $("oc").innerHTML=`<div class="empty">No matching orders</div>`; return; }
+  $("oc").innerHTML=L.map(o=>{
+    const prog=Math.min(100,Math.round((Number(o.x||0)/Math.max(1,Number(o.q||0)))*100));
+    const res=Number(o.matReserved||0)>0;
+    const done=st(o)==="COMPLETED";
+    const r=rateOf(o);
+    return `<div class="oc ${res?"res":""} ${done?"done":""}" draggable="true" ondragstart="dragStart(event,${o.id})" ondragend="dragEnd(event)" style="${done?"border-color:rgba(34,197,94,.35)":""}">
+      <div class="otop"><div><div class="op">${esc(o.p)}</div><div class="om">${esc(o.m)} · ${esc(o.d)}</div></div><div class="qp">${o.q}</div></div>
+      <div class="meta"><span>${esc(o.u)||"—"}</span><span>Cut ${o.c}/${o.q}</span><span>Stitch ${o.s}/${o.q}</span><span>Disp ${o.x}/${o.q}</span><span>${r.toFixed(1)} M²/pc</span></div>
+      <div class="track">
+        <div class="step ${o.c>=o.q?"dn":o.c>0?"cu":""}">CUT</div><span style="color:var(--dim)">›</span>
+        <div class="step ${o.s>=o.q?"dn":o.s>0?"cu":""}">STITCH</div><span style="color:var(--dim)">›</span>
+        <div class="step ${o.x>=o.q?"dn":o.x>0?"cu":""}">DISP</div>
+      </div>
+      <div class="bar"><div class="bf" style="width:${prog}%"></div></div>
+      <b style="font-size:.8rem;margin-top:4px;display:inline-block">${st(o)==="COMPLETED"?"DISPATCHED":st(o)}</b>
+      <span class="dk ${o.dickie?"yes":"no"}">${o.dickie?"With Dickie":"Without Dickie"}</span>
+      ${res?`<div class="rb">Reserved ${Number(o.matReserved).toFixed(1)} M²</div>`:""}
+      ${o.parcels&&o.parcels.length?`<div class="muted" style="font-size:.72rem;margin-top:4px">${o.parcels.map((p,i)=>`P${i+1}: ${p.qty}${p.note?" ("+esc(p.note)+")":""}`).join(" · ")}</div>`:""}
+      ${o.editedBy?`<div class="muted" style="font-size:.68rem;margin-top:2px">Edited by ${esc(o.editedBy)}${o.editedAt?" · "+new Date(o.editedAt).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):""}</div>`:""}
+      <div class="stage-btns">
+        <button class="cut" onclick="quickStage(${o.id},'c')">Cut</button>
+        <button class="stitch" onclick="quickStage(${o.id},'s')">Stitch</button>
+        <button class="disp" onclick="quickStage(${o.id},'x')">Dispatch</button>
+      </div>
+      <div class="acts">
+        <label style="display:flex;align-items:center;gap:3px;font-size:.76rem;color:var(--muted)"><input type="checkbox" class="bc" data-id="${o.id}" onchange="updBi()"> Sel</label>
+        <button class="bg bsm" data-id="${o.id}" onclick="openEdit(+this.dataset.id)">Edit</button>
+        <button class="bd bsm" data-id="${o.id}" onclick="delO(+this.dataset.id)">Del</button>
+      </div>
+    </div>`;
+  }).join("");
+  updBi();
+}
+
+function fillSug(){
+  const parties=[], models=[], designs=[];
+  Object.keys(RM.rates).forEach(v=>{v=String(v).trim();if(v&&!models.some(x=>x.toLowerCase()===v.toLowerCase()))models.push(v);});
+  O.forEach(o=>{
+    if(!pend(o))return;
+    const p=String(o.p||"").trim(), d=String(o.d||"").trim();
+    if(p&&!parties.some(x=>x.toLowerCase()===p.toLowerCase()))parties.push(p);
+    if(d&&!designs.some(x=>x.toLowerCase()===d.toLowerCase()))designs.push(d);
+  });
+  $("dlP").innerHTML=parties.map(v=>`<option value="${esc(v)}">`).join("");
+  $("dlM").innerHTML=models.map(v=>`<option value="${esc(v)}">`).join("");
+  $("dlD").innerHTML=designs.map(v=>`<option value="${esc(v)}">`).join("");
+}
+
+/* STOCK */
+function renderStock(){
+  $("rsv").textContent=Number(RM.rollSize||45).toFixed(1)+" M²";
+  const rk=Object.keys(RM.ready).sort();
+  $("rList").innerHTML=rk.length?rk.map(k=>`<div class="li"><div class="r"><b>${esc(k)}</b><span>${n(RM.ready[k])} cars</span>
+    <div><button class="bg bsm" data-k="${esc(k)}" onclick="editReady(this.dataset.k)">Edit</button>
+    <button class="bd bsm" data-k="${esc(k)}" onclick="delReady(this.dataset.k)">Del</button></div></div></div>`).join(""):`<span class="muted">No ready stock</span>`;
+
+  const dk2=Object.keys(RM.designs).sort();
+  $("dList").innerHTML=dk2.length?dk2.map(k=>{
+    const x=RM.designs[k], tot=Number(x.rolls||0)*Number(RM.rollSize||45);
+    const u=Number(x.used||0), r=Number(x.reserved||0), f=tot-u-r;
+    const cl=f<0?"b":f<10?"w":"g";
+    return `<div class="li"><div class="r"><div><b>${esc(k)}</b><br><span class="muted">${Number(x.rolls||0).toFixed(1)} rolls · ${tot.toFixed(0)} M²</span></div>
+      <div><button class="bg bsm" data-k="${esc(k)}" onclick="editDes(this.dataset.k)">Edit</button>
+      <button class="bd bsm" data-k="${esc(k)}" onclick="delDes(this.dataset.k)">Del</button></div></div>
+      <div class="rm" style="margin-top:6px">
+        <div class="rmb"><b>Used</b><div class="n">${u.toFixed(0)}</div></div>
+        <div class="rmb"><b>Res</b><div class="n">${r.toFixed(0)}</div></div>
+        <div class="rmb"><b>Free</b><div class="n ${cl}">${f.toFixed(0)}</div></div>
+        <div class="rmb"><b>Roll</b><div class="n">${Number(RM.rollSize||45).toFixed(0)}</div></div>
+      </div></div>`;
+  }).join(""):`<span class="muted">No designs</span>`;
+
+  const rtk=Object.keys(RM.rates).sort();
+  $("rateL").innerHTML=rtk.length?rtk.map(k=>{
+    const base=Number(RM.rates[k]);
+    const dx=dickieRate(k);
+    const withD=base+dx;
+    return `<div class="li"><div class="r"><div><b>${esc(k)}</b><br><span class="muted">Mat ${base.toFixed(2)} · Dickie +${dx.toFixed(2)} → With ${withD.toFixed(2)} M²</span></div>
+    <div><button class="bg bsm" data-k="${esc(k)}" onclick="editRate(this.dataset.k)">Edit</button>
+    <button class="bd bsm" data-k="${esc(k)}" onclick="delRate(this.dataset.k)">Del</button></div></div></div>`;
+  }).join(""):`<span class="muted">No rates</span>`;
+}
+
+function saveReady(){ const m=($("rmodel").value||"").trim(), q=Number($("rqty").value); if(!m||!isFinite(q)||q<0)return alert("Enter model + qty"); const f=Object.keys(RM.ready).find(k=>mk(k)===mk(m)); RM.ready[f||m]=n(q); logEdit("Ready stock",m+" = "+n(q)); $("rmodel").value="";$("rqty").value=""; scheduleSave(); renderStock(); fullRender(); }
+window.saveReady=saveReady;
+function editReady(m){ const v=prompt("Ready for "+m+":",ready(m)); if(v===null)return; const x=Number(v); if(!isFinite(x)||x<0)return alert("Invalid"); const f=Object.keys(RM.ready).find(k=>mk(k)===mk(m)); RM.ready[f||m]=n(x); logEdit("Ready stock",m+" = "+n(x)); scheduleSave(); renderStock(); fullRender(); }
+window.editReady=editReady;
+function delReady(m){ if(!confirm("Delete "+m+"?"))return; const f=Object.keys(RM.ready).find(k=>mk(k)===mk(m)); if(f)delete RM.ready[f]; logEdit("Deleted ready",m); scheduleSave(); renderStock(); fullRender(); }
+window.delReady=delReady;
+
+function saveDes(){
+  const d=($("dd").value||"").trim(), rolls=Number($("dr").value);
+  if(!d||!isFinite(rolls)||rolls<0)return alert("Enter design + rolls");
+  const f=Object.keys(RM.designs).find(k=>dk(k)===dk(d));
+  if(f){ const u=Number(RM.designs[f].used)||0,r=Number(RM.designs[f].reserved)||0; if(rolls*RM.rollSize+0.001<u+r)return alert("Cannot go below used+reserved"); RM.designs[f].rolls=rolls; }
+  else RM.designs[d]={rolls,used:0,reserved:0};
+  logEdit("Design material",d+" = "+rolls+" rolls");
+  $("dd").value="";$("dr").value=""; scheduleSave(); renderStock(); fullRender();
+}
+window.saveDes=saveDes;
+function editDes(d){ const info=dInfo(d); const v=prompt("Rolls for "+d+":",info.rolls); if(v===null)return; const rolls=Number(v); if(!isFinite(rolls)||rolls<0)return alert("Invalid"); if(rolls*RM.rollSize+0.001<info.used+info.reserved)return alert("Too low"); const f=Object.keys(RM.designs).find(k=>dk(k)===dk(d)); if(f)RM.designs[f].rolls=rolls; logEdit("Design rolls",d+" = "+rolls); scheduleSave(); renderStock(); fullRender(); }
+window.editDes=editDes;
+function delDes(d){ const info=dInfo(d); if(info.used>0||info.reserved>0)return alert("Has used/reserved"); if(!confirm("Delete "+d+"?"))return; const f=Object.keys(RM.designs).find(k=>dk(k)===dk(d)); if(f)delete RM.designs[f]; logEdit("Deleted design",d); scheduleSave(); renderStock(); fullRender(); }
+window.delDes=delDes;
+function setRS(){ const v=prompt("M² per roll:",RM.rollSize||45); if(v===null)return; const x=Number(v); if(!isFinite(x)||x<=0)return alert("Invalid"); const ur=totUsed()+totRes(); const nt=Object.keys(RM.designs).reduce((s,k)=>s+Number(RM.designs[k].rolls||0)*x,0); if(nt+0.001<ur)return alert("Too small"); RM.rollSize=x; logEdit("Roll size",x+" M²"); scheduleSave(); renderStock(); fullRender(); }
+window.setRS=setRS;
+
+function saveRate(){
+  const m=($("rm").value||"").trim(), v=Number($("rv").value), dx=Number($("rdk").value);
+  if(!m||!isFinite(v)||v<0)return alert("Enter model + mat M²");
+  if(!isFinite(dx)||dx<0)return alert("Enter Dickie extra (0 if none)");
+  const f=Object.keys(RM.rates).find(k=>mk(k)===mk(m));
+  const key=f||m;
+  RM.rates[key]=v;
+  if(!RM.dickieRates) RM.dickieRates={};
+  const fd=Object.keys(RM.dickieRates).find(k=>mk(k)===mk(m));
+  RM.dickieRates[fd||key]=dx;
+  logEdit("Rate",m+" mat "+v+" · dickie +"+dx);
+  $("rm").value="";$("rv").value="";$("rdk").value="";
+  scheduleSave(); renderStock();
+}
+window.saveRate=saveRate;
+function editRate(m){
+  const v=prompt("M²/car MAT only for "+m+":",baseRate(m)); if(v===null)return;
+  const x=Number(v); if(!isFinite(x)||x<0)return alert("Invalid mat");
+  const d=prompt("Dickie EXTRA M² for "+m+" (0 if none):", dickieRate(m)); if(d===null)return;
+  const dx=Number(d); if(!isFinite(dx)||dx<0)return alert("Invalid dickie");
+  const f=Object.keys(RM.rates).find(k=>mk(k)===mk(m)); if(f)RM.rates[f]=x;
+  if(!RM.dickieRates) RM.dickieRates={};
+  const fd=Object.keys(RM.dickieRates).find(k=>mk(k)===mk(m));
+  RM.dickieRates[fd||f||m]=dx;
+  logEdit("Rate",m+" mat "+x+" · dickie +"+dx);
+  scheduleSave(); renderStock();
+}
+window.editRate=editRate;
+function delRate(m){
+  if(!confirm("Delete rate "+m+"?"))return;
+  const f=Object.keys(RM.rates).find(k=>mk(k)===mk(m)); if(f)delete RM.rates[f];
+  const fd=Object.keys(RM.dickieRates||{}).find(k=>mk(k)===mk(m)); if(fd)delete RM.dickieRates[fd];
+  logEdit("Deleted rate",m);
+  scheduleSave(); renderStock();
+}
+window.delRate=delRate;
+
+function togDes(){ const b=$("dSec"),t=$("dt"); if(b.classList.contains("hid")){b.classList.remove("hid");t.textContent="Hide";}else{b.classList.add("hid");t.textContent="Show";} }
+window.togDes=togDes;
+function togRate(){ const b=$("rSec"),t=$("rtT"); if(b.classList.contains("hid")){b.classList.remove("hid");t.textContent="Hide M² per Car";}else{b.classList.add("hid");t.textContent="Show M² per Car (mat only)";} }
+window.togRate=togRate;
+
+/* DICKIE TOGGLE */
+function setAddDk(v){ addDk=!!v; $("addDkNo").classList.toggle("on",!addDk); $("addDkYes").classList.toggle("on",addDk); updAddHint(); }
+window.setAddDk=setAddDk;
+function setEdDk(v){ edDk=!!v; $("edDkNo").classList.toggle("on",!edDk); $("edDkYes").classList.toggle("on",edDk); updEdHint(); }
+window.setEdDk=setEdDk;
+function updAddHint(){
+  const m=($("mm").value||"").trim();
+  const base=baseRate(m);
+  if(!m||!base){ $("addHint").textContent="Select model with rate in Stock. Dickie adds extra M²."; return; }
+  const total=rate(m, addDk);
+  const dx=dickieRate(m);
+  $("addHint").textContent=addDk
+    ? `With Dickie: mat ${base.toFixed(2)} + ${dx.toFixed(2)} = ${total.toFixed(2)} M² / pc`
+    : `Without Dickie: mat only ${base.toFixed(2)} M² / pc`;
+}
+function updEdHint(){
+  const m=($("em").value||"").trim();
+  const base=baseRate(m);
+  if(!m||!base){ $("edHint").textContent=""; return; }
+  const total=rate(m, edDk);
+  const dx=dickieRate(m);
+  $("edHint").textContent=edDk
+    ? `With Dickie: ${base.toFixed(2)} + ${dx.toFixed(2)} = ${total.toFixed(2)} M² / pc`
+    : `Without Dickie: ${base.toFixed(2)} M² / pc`;
+}
+["mm","em"].forEach(id=>{
+  document.addEventListener("input", e=>{ if(e.target&&e.target.id==="mm") updAddHint(); if(e.target&&e.target.id==="em") updEdHint(); });
+});
+
+/* ORDERS CRUD */
+function openAdd(){ fillSug(); addDk=false; setAddDk(false); openM("mAdd"); }
+window.openAdd=openAdd;
+function saveAdd(){
+  const q=n($("mq").value);
+  if(!$("mp").value||!$("mm").value||!$("md").value||!$("mu").value||q<1)return alert("Fill all fields");
+  const model=$("mm").value.trim(), design=$("md").value.trim();
+  if(!baseRate(model))return alert("Add M²/car rate for "+model+" in Stock first");
+  if(!Object.keys(RM.designs).some(k=>dk(k)===dk(design)))return alert("Allocate material for design \""+design+"\" in Stock first");
+  O.push({id:NID++,p:$("mp").value.trim(),m:model,d:design,u:$("mu").value,q,c:0,s:0,x:0,matUsed:0,matReserved:0,dickie:!!addDk,editedBy:MY_NAME,editedAt:Date.now()});
+  logEdit("Added order",$("mp").value.trim()+" · "+model);
+  ["mp","mm","md","mu","mq"].forEach(id=>$(id).value="");
+  closeM("mAdd"); scheduleSave(); fullRender(); alert("Order added"+(addDk?" (With Dickie)":" (Without Dickie)"));
+}
+window.saveAdd=saveAdd;
+
+function openEdit(id){
+  const o=O.find(x=>x.id==id); if(!o)return; EDIT=id;
+  $("ep").value=o.p;$("em").value=o.m;$("ed").value=o.d;$("eu").value=o.u;
+  $("eq").value=o.q;$("ec").value=o.c;$("es").value=o.s;$("ex").value=o.x;
+  edDk=!!o.dickie; setEdDk(edDk); updEdHint();
+  renderParcelList(o.parcels||[]);
+  openM("mEdit");
+}
+window.openEdit=openEdit;
+
+function renderParcelList(parcels){
+  const box=$("parcelList");
+  box.innerHTML=(parcels||[]).map((p,i)=>`
+    <div class="row" style="margin-top:4px;align-items:center">
+      <input class="pq" type="number" min="0" value="${n(p.qty)}" placeholder="Qty" style="flex:1;min-width:70px" oninput="syncParcelTotal()">
+      <input class="pn" type="text" value="${esc(p.note||"")}" placeholder="Parcel ${i+1}" style="flex:2;min-width:100px">
+      <button type="button" class="bd bsm" onclick="this.parentElement.remove();syncParcelTotal()">×</button>
+    </div>`).join("")||`<span class="muted" style="font-size:.78rem">No parcels yet</span>`;
+  syncParcelTotal();
+}
+window.renderParcelList=renderParcelList;
+function addParcelRow(){
+  const box=$("parcelList");
+  if(box.querySelector(".muted")) box.innerHTML="";
+  const i=box.querySelectorAll(".pq").length;
+  const div=document.createElement("div");
+  div.className="row";
+  div.style.cssText="margin-top:4px;align-items:center";
+  div.innerHTML=`<input class="pq" type="number" min="0" value="" placeholder="Qty" style="flex:1;min-width:70px" oninput="syncParcelTotal()">
+    <input class="pn" type="text" value="" placeholder="Parcel ${i+1}" style="flex:2;min-width:100px">
+    <button type="button" class="bd bsm" onclick="this.parentElement.remove();syncParcelTotal()">×</button>`;
+  box.appendChild(div);
+  syncParcelTotal();
+}
+window.addParcelRow=addParcelRow;
+function syncParcelTotal(){
+  let sum=0;
+  document.querySelectorAll("#parcelList .pq").forEach(inp=>sum+=n(inp.value));
+  const disp=n($("ex").value);
+  const el=$("parcelSum");
+  if(!el)return;
+  el.textContent=sum?`Parcels total: ${sum}${disp?` / Dispatch: ${disp}`:""}`:"";
+  el.style.color=disp&&sum!==disp?"var(--amber)":"var(--muted)";
+}
+window.syncParcelTotal=syncParcelTotal;
+
+function saveEdit(){
+  const o=O.find(x=>x.id==EDIT); const q=n($("eq").value);
+  if(!o||q<1)return alert("Invalid");
+  const oldD=o.d, oldU=Number(o.matUsed||0), oldR=Number(o.matReserved||0);
+  const nm=$("em").value.trim(), nd=$("ed").value.trim(), nc=Math.min(n($("ec").value),q);
+  if(!nm||!nd)return alert("Model + Design required");
+  const r=rate(nm, edDk); if(nc>0&&!baseRate(nm))return alert("Add rate for "+nm);
+  if(oldU>0){ const f=Object.keys(RM.designs).find(k=>dk(k)===dk(oldD)); if(f)RM.designs[f].used=Math.max(0,Number(RM.designs[f].used||0)-oldU); }
+  if(oldR>0){ const f=Object.keys(RM.designs).find(k=>dk(k)===dk(oldD)); if(f)RM.designs[f].reserved=Math.max(0,Number(RM.designs[f].reserved||0)-oldR); }
+  const nu=nc*r;
+  if(nu>0){ const f=Object.keys(RM.designs).find(k=>dk(k)===dk(nd)); if(!f)return alert("No material for "+nd); const free=dFree(nd); if(nu>free+0.001)return alert("Need "+nu.toFixed(1)+" free "+free.toFixed(1)); RM.designs[f].used=Number(RM.designs[f].used||0)+nu; }
+  o.p=$("ep").value.trim(); o.m=nm; o.d=nd; o.u=$("eu").value; o.q=q; o.c=nc;
+  o.s=Math.min(n($("es").value),q); o.x=Math.min(n($("ex").value),q); o.matUsed=nu; o.matReserved=0; o.dickie=!!edDk;
+  // parcels
+  const parcels=[];
+  document.querySelectorAll("#parcelList .row").forEach(row=>{
+    const pq=row.querySelector(".pq"), pn=row.querySelector(".pn");
+    if(!pq)return;
+    const qty=n(pq.value);
+    if(qty>0) parcels.push({qty, note:(pn&&pn.value||"").trim()});
+  });
+  const pSum=parcels.reduce((s,p)=>s+p.qty,0);
+  if(parcels.length && pSum!==o.x) return alert("Parcel total ("+pSum+") must equal Dispatch qty ("+o.x+")");
+  o.parcels=parcels;
+  o.editedBy=MY_NAME; o.editedAt=Date.now();
+  logEdit("Edited order",o.p+" · "+o.m+(parcels.length?" · parcels":""));
+  EDIT=null; closeM("mEdit"); scheduleSave(); fullRender(); alert("Updated"+(parcels.length?" · "+parcels.length+" parcels":""));
+}
+window.saveEdit=saveEdit;
+
+function delO(id){
+  if(prompt("Enter password to delete","")!=="8055")return alert("Wrong password");
+  const i=O.findIndex(x=>x.id==id); if(i<0)return;
+  const o=O[i]; const f=Object.keys(RM.designs).find(k=>dk(k)===dk(o.d));
+  if(f){ RM.designs[f].used=Math.max(0,Number(RM.designs[f].used||0)-Number(o.matUsed||0)); RM.designs[f].reserved=Math.max(0,Number(RM.designs[f].reserved||0)-Number(o.matReserved||0)); }
+  O.splice(i,1); D=D.filter(x=>x.id!=id);
+  if(O.length===0) localStorage.setItem("pAllowEmpty","1");
+  logEdit("Deleted order",o.p+" · "+o.m);
+  scheduleSave(); fullRender();
+  alert("Deleted");
+}
+window.delO=delO;
+function delAll(){
+  if(!O.length)return alert("None");
+  if(prompt("Enter password to delete all","")!=="8055")return alert("Wrong password");
+  Object.keys(RM.designs).forEach(k=>{RM.designs[k].used=0;RM.designs[k].reserved=0;});
+  O=[];D=[];NID=1;
+  localStorage.setItem("pAllowEmpty","1");
+  logEdit("Deleted all orders","");
+  scheduleSave(); fullRender();
+  alert("All orders cleared");
+}
+window.delAll=delAll;
+
+function sel(){ return [...document.querySelectorAll(".bc:checked")].map(x=>O.find(o=>o.id==+x.dataset.id)).filter(Boolean); }
+function clrSel(){ document.querySelectorAll(".bc").forEach(x=>x.checked=false); updBi(); }
+window.clrSel=clrSel;
+function updBi(){ const L=sel(); let need=0; L.forEach(o=>{need+=Math.max(0,Number(o.q||0)-Number(o.c||0))*rateOf(o);}); $("bi").textContent=L.length?L.length+" selected · ~"+need.toFixed(0)+" M²":"Select orders to reserve"; }
+window.updBi=updBi;
+
+function doReserve(){
+  const L=sel(); if(!L.length)return alert("Select at least one");
+  L.forEach(o=>{ const old=Number(o.matReserved||0); if(old>0){ const f=Object.keys(RM.designs).find(k=>dk(k)===dk(o.d)); if(f)RM.designs[f].reserved=Math.max(0,Number(RM.designs[f].reserved||0)-old); o.matReserved=0; }});
+  const need={};
+  L.forEach(o=>{ const rem=Math.max(0,Number(o.q||0)-Number(o.c||0)), r=rateOf(o); if(rem>0&&r>0){ const k=dk(o.d); if(!need[k])need[k]={d:o.d,a:0}; need[k].a+=rem*r; }});
+  for(const k in need){ const item=need[k], info=dInfo(item.d), free=info.rolls*RM.rollSize-info.used-info.reserved; if(item.a>free+0.001)return alert("Not enough\n"+item.d+"\nNeed "+item.a.toFixed(0)+" free "+free.toFixed(0)); }
+  for(const k in need){ const item=need[k], f=Object.keys(RM.designs).find(x=>dk(x)===dk(item.d)); if(f)RM.designs[f].reserved=Number(RM.designs[f].reserved||0)+item.a; }
+  L.forEach(o=>{o.matReserved=Math.max(0,Number(o.q||0)-Number(o.c||0))*rateOf(o);});
+  scheduleSave(); fullRender(); alert("Reserved");
+}
+window.doReserve=doReserve;
+function filtR(){ $("so").value="R"; $("f").value="ALL"; softRender(); }
+window.filtR=filtR;
+function filtP(){ $("so").value="D"; $("f").value="P"; softRender(); }
+window.filtP=filtP;
+function filtDk(){ $("so").value="DK"; $("f").value="P"; softRender(); }
+window.filtDk=filtDk;
+
+/* ATTENDANCE */
+function addW(){ const name=($("wn").value||"").trim(); if(!name)return alert("Enter name"); if(W.some(w=>w.name.toLowerCase()===name.toLowerCase()))return alert("Exists"); W.push({id:Date.now(),name}); $("wn").value=""; scheduleSave(); renderAtt(); }
+window.addW=addW;
+function remW(id){ if(!confirm("Remove?"))return; W=W.filter(w=>w.id!=id); Object.keys(A).forEach(d=>{if(A[d])delete A[d][id];}); scheduleSave(); renderAtt(); }
+window.remW=remW;
+function setA(id,s){ const d=today(); if(!A[d])A[d]={}; A[d][id]=s; renderAtt(); }
+window.setA=setA;
+function allP(){ const d=today(); if(!A[d])A[d]={}; W.forEach(w=>A[d][w.id]="P"); renderAtt(); }
+window.allP=allP;
+function saveAtt(){ logEdit("Attendance",today()+" · "+(A[today()]?Object.values(A[today()]).filter(s=>s==="P").length:0)+" present"); scheduleSave(); snapToday(true); alert("Attendance saved "+today()); }
+window.saveAtt=saveAtt;
+
+function renderAtt(){
+  const d=today();
+  $("aDate").textContent=new Date().toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"});
+  if(!A[d])A[d]={};
+  if(!W.length){ $("aList").innerHTML=`<div class="empty">No workers yet</div>`; updateBossAtt(); return; }
+  $("aList").innerHTML=W.map(w=>{
+    const s=A[d][w.id]||"";
+    return `<div class="arow"><div class="an">${esc(w.name)}</div><div class="ab">
+      <button class="bg bsm ${s==="P"?"ap":""}" onclick="setA(${w.id},'P')">P</button>
+      <button class="bg bsm ${s==="A"?"aa":""}" onclick="setA(${w.id},'A')">A</button>
+      <button class="bg bsm ${s==="L"?"al":""}" onclick="setA(${w.id},'L')">L</button>
+      <button class="bd bsm" onclick="remW(${w.id})">×</button>
+    </div></div>`;
+  }).join("");
+  let p=0; W.forEach(w=>{if(A[d][w.id]==="P")p++;});
+  let prev=W.slice(0,6).map(w=>{const s=A[d][w.id]||"-"; const c=s==="P"?"var(--green)":s==="A"?"var(--red)":s==="L"?"var(--amber)":"var(--dim)"; return `<span style="margin:2px 5px 2px 0;font-size:.78rem"><b style="color:${c}">${s}</b> ${esc(w.name)}</span>`;}).join("");
+  if(W.length>6)prev+=`<span class="muted"> +${W.length-6}</span>`;
+  $("aPrev").innerHTML=prev||`<span class="muted">No workers</span>`;
+  $("aB").textContent=p+"/"+W.length;
+  updateBossAtt();
+}
+function updateBossAtt(){ const d=today(); if(!A[d])A[d]={}; let p=0; W.forEach(w=>{if(A[d][w.id]==="P")p++;}); $("ba").textContent=p; $("bas").textContent=p+"/"+W.length+" present"; }
+
+/* 30-DAY HISTORY */
+function snapToday(silent){
+  const d=today();
+  let cut=0,stitch=0,disp=0,pendQ=0,dkOrders=0;
+  O.forEach(o=>{ cut+=o.c; stitch+=o.s; disp+=o.x; pendQ+=Math.max(0,o.q-o.x); if(o.dickie&&pend(o))dkOrders++; });
+  let present=0,absent=0,leave=0;
+  if(A[d]) Object.values(A[d]).forEach(s=>{ if(s==="P")present++; else if(s==="A")absent++; else if(s==="L")leave++; });
+  H[d]={
+    cut, stitch, disp, pending:pendQ, orders:O.length,
+    present, absent, leave, workers:W.length,
+    freeM2: totFree(), usedM2: totUsed(),
+    dickiePending: dkOrders,
+    todayJobs: D.length,
+    savedAt: Date.now()
+  };
+  pruneHistory();
+  scheduleSave();
+  if(!silent) alert("Today snapshot saved");
+  renderHist();
+}
+window.snapToday=snapToday;
+
+function renderHist(){
+  pruneHistory();
+  const keys=Object.keys(H).sort().reverse();
+  if(!keys.length){ $("histList").innerHTML=`<div class="empty">No history yet.<br>Tap "Save Today Snapshot" or mark attendance.</div>`; return; }
+  $("histList").innerHTML=keys.map(k=>{
+    const h=H[k];
+    const label=new Date(k+"T12:00:00").toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"});
+    return `<div class="hist-row">
+      <div class="hist-day">${label}</div>
+      <div class="hist-det">
+        Cut ${h.cut||0} · Stitch ${h.stitch||0} · Disp ${h.disp||0}<br>
+        Pending ${h.pending||0} · Dickie pending ${h.dickiePending||0}<br>
+        Present ${h.present||0} / Absent ${h.absent||0} / Leave ${h.leave||0}<br>
+        Free ${Number(h.freeM2||0).toFixed(0)} M² · Jobs ${h.todayJobs||0}
+      </div>
+    </div>`;
+  }).join("");
+}
+window.renderHist=renderHist;
+
+/* DAY / SUMMARY */
+function openDay(){
+  let z="";
+  O.forEach(o=>{ if(!pend(o))return; const old=D.find(x=>x.id==o.id); const v=old?old.q:Math.max(1,o.q-o.x);
+    z+=`<div class="di"><input type="checkbox" class="dc" data-id="${o.id}" ${old?"checked":""}><div><b>${esc(o.p)}</b><br>${esc(o.m)} / ${esc(o.d)}${o.dickie?" · Dickie":""}<div class="muted">Left ${Math.max(0,o.q-o.x)} · ${st(o)}</div></div><input class="dq" data-id="${o.id}" type="number" min="1" value="${v}" style="width:60px"></div>`;
+  });
+  $("days").innerHTML=z||`<div class="empty">No pending</div>`;
+  openM("mDay");
+}
+window.openDay=openDay;
+function saveDay(){ D=[]; document.querySelectorAll(".dc:checked").forEach(c=>{ const id=+c.dataset.id; const inp=document.querySelector('.dq[data-id="'+id+'"]'); const q=n(inp.value); if(q)D.push({id,q}); }); scheduleSave(); closeM("mDay"); fullRender(); snapToday(true); alert("Saved"); }
+window.saveDay=saveDay;
+function printDay(){
+  if(!D.length)return alert("Plan today first");
+  const rows=D.map((w,i)=>{const o=O.find(x=>x.id==w.id); return `<tr><td>${i+1}</td><td>${esc(o.p)}</td><td>${esc(o.m)}</td><td>${esc(o.d)}</td><td>${o.dickie?"Yes":"No"}</td><td>${w.q}</td><td>□</td><td>□</td><td>□</td></tr>`;}).join("");
+  const w=window.open("","_blank"); if(!w)return alert("Allow popups");
+  w.document.write(`<html><head><title>Today</title><style>body{font-family:Arial;padding:18px}table{border-collapse:collapse;width:100%}th,td{border:2px solid #000;padding:10px}th{background:#eee}td:nth-child(n+7){font-size:24px;text-align:center}
+.oc{transition:transform .15s ease,box-shadow .15s ease;cursor:grab}
+.oc:active{cursor:grabbing;transform:scale(.98)}
+.oc.dragging{opacity:.5;transform:scale(.95)}
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;margin:8px 10px;color:var(--muted);font-size:.8rem;transition:all .15s}
+.drop-zone.over{border-color:var(--teal);background:var(--teal-dim);color:var(--teal)}
+.stage-btns{display:flex;gap:6px;margin-top:8px}
+.stage-btns button{flex:1;min-height:48px;font-weight:750;font-size:.8rem}
+.stage-btns .cut{background:#d97706}
+.stage-btns .stitch{background:#16a34a}
+.stage-btns .disp{background:#0d9488}
+.oc.done{opacity:.8}
+.premium-header{background:linear-gradient(180deg,rgba(20,184,166,.12),transparent)}
+
+</style></head><body>
+  <h1 style="text-align:center">TODAY'S WORK</h1><p style="text-align:center">${new Date().toLocaleDateString("en-IN",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
+  <table><tr><th>#</th><th>Party</th><th>Model</th><th>Design</th><th>Dickie</th><th>Qty</th><th>CUT</th><th>STITCH</th><th>DISP</th></tr>${rows}</table>
+  <br>Worker: ____________ Supervisor: ____________
+  <script>onload=()=>print()<\/script></body></html>`); w.document.close();
+}
+window.printDay=printDay;
+
+function buildSummaryData(){
+  let tq=0,tc=0,ts=0,tx=0,pendQ=0,done=0,withDk=0,withoutDk=0,matUsed=0,matRes=0,pendDkQ=0;
+  const models={}, parties={}, designs={};
+  O.forEach(o=>{
+    tq+=o.q; tc+=o.c; ts+=o.s; tx+=o.x;
+    const left=Math.max(0,o.q-o.x);
+    pendQ+=left;
+    if(o.x>=o.q) done++;
+    if(o.dickie){ withDk++; pendDkQ+=left; } else withoutDk++;
+    matUsed+=Number(o.matUsed||0); matRes+=Number(o.matReserved||0);
+    const mk2=o.m||"—", pk=o.p||"—", dk2=o.d||"—";
+    if(!models[mk2]) models[mk2]={orders:0,qty:0,cut:0,stitch:0,disp:0,pend:0,dickie:0,mat:0};
+    models[mk2].orders++; models[mk2].qty+=o.q; models[mk2].cut+=o.c; models[mk2].stitch+=o.s; models[mk2].disp+=o.x; models[mk2].pend+=left; if(o.dickie)models[mk2].dickie++; models[mk2].mat+=left*rateOf(o);
+    if(!parties[pk]) parties[pk]={orders:0,qty:0,pend:0};
+    parties[pk].orders++; parties[pk].qty+=o.q; parties[pk].pend+=left;
+    if(!designs[dk2]) designs[dk2]={orders:0,qty:0,pend:0,used:0,reserved:0};
+    designs[dk2].orders++; designs[dk2].qty+=o.q; designs[dk2].pend+=left; designs[dk2].used+=Number(o.matUsed||0); designs[dk2].reserved+=Number(o.matReserved||0);
+  });
+  const d=today(); let ap=0,aa=0,al=0;
+  if(A[d]) Object.values(A[d]).forEach(s=>{if(s==="P")ap++;else if(s==="A")aa++;else if(s==="L")al++;});
+  return {tq,tc,ts,tx,pendQ,done,withDk,withoutDk,matUsed,matRes,pendDkQ,models,parties,designs,ap,aa,al,d};
+}
+
+function openSum(){
+  const S=buildSummaryData();
+  const modelRows=Object.entries(S.models).sort((a,b)=>b[1].qty-a[1].qty).map(([k,v])=>
+    `<tr><td><b>${esc(k)}</b></td><td>${v.orders}</td><td>${v.qty}</td><td>${v.cut}</td><td>${v.stitch}</td><td>${v.disp}</td><td>${v.pend}</td><td>${v.dickie}</td><td>${v.mat.toFixed(1)}</td></tr>`).join("")||`<tr><td colspan="9" style="text-align:center">None</td></tr>`;
+  const partyRows=Object.entries(S.parties).sort((a,b)=>b[1].qty-a[1].qty).map(([k,v])=>
+    `<tr><td><b>${esc(k)}</b></td><td>${v.orders}</td><td>${v.qty}</td><td>${v.pend}</td></tr>`).join("")||`<tr><td colspan="4" style="text-align:center">None</td></tr>`;
+  const designRows=Object.entries(S.designs).sort((a,b)=>b[1].qty-a[1].qty).map(([k,v])=>{
+    const info=dInfo(k); const tot=info.rolls*RM.rollSize; const free=tot-info.used-info.reserved;
+    return `<tr><td><b>${esc(k)}</b></td><td>${v.orders}</td><td>${v.qty}</td><td>${v.pend}</td><td>${info.rolls.toFixed(1)}</td><td>${info.used.toFixed(1)}</td><td>${info.reserved.toFixed(1)}</td><td>${free.toFixed(1)}</td></tr>`;
+  }).join("")||`<tr><td colspan="8" style="text-align:center">None</td></tr>`;
+  const rateRows=Object.keys(RM.rates).sort().map(k=>{
+    const base=baseRate(k), dx=dickieRate(k);
+    return `<tr><td><b>${esc(k)}</b></td><td>${base.toFixed(2)}</td><td>${dx.toFixed(2)}</td><td>${(base+dx).toFixed(2)}</td><td>${ready(k)}</td></tr>`;
+  }).join("")||`<tr><td colspan="5" style="text-align:center">None</td></tr>`;
+  const histKeys=Object.keys(H||{}).sort().reverse().slice(0,7);
+  const histRows=histKeys.map(k=>{
+    const h=H[k];
+    const label=new Date(k+"T12:00:00").toLocaleDateString("en-IN",{day:"numeric",month:"short"});
+    return `<tr><td>${label}</td><td>${h.cut||0}</td><td>${h.stitch||0}</td><td>${h.disp||0}</td><td>${h.pending||0}</td><td>${h.present||0}/${h.workers||0}</td><td>${Number(h.freeM2||0).toFixed(0)}</td></tr>`;
+  }).join("")||`<tr><td colspan="7" style="text-align:center">No history yet</td></tr>`;
+
+  $("sumC").innerHTML=`
+  <p class="muted" style="text-align:center;margin-bottom:10px">${new Date().toLocaleDateString("en-IN",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
+  <div class="stats">
+    <div class="stat"><b>Orders</b><div class="n">${O.length}</div></div>
+    <div class="stat"><b>Total Qty</b><div class="n">${S.tq}</div></div>
+    <div class="stat"><b>Pending pcs</b><div class="n">${S.pendQ}</div></div>
+    <div class="stat"><b>Completed</b><div class="n">${S.done}</div></div>
+    <div class="stat"><b>Cutting</b><div class="n">${S.tc}</div></div>
+    <div class="stat"><b>Stitching</b><div class="n">${S.ts}</div></div>
+    <div class="stat"><b>Dispatched</b><div class="n">${S.tx}</div></div>
+    <div class="stat"><b>Today jobs</b><div class="n">${D.length}</div></div>
+  </div>
+  <div class="stats" style="margin-top:8px">
+    <div class="stat"><b>With Dickie</b><div class="n">${S.withDk}</div></div>
+    <div class="stat"><b>Without</b><div class="n">${S.withoutDk}</div></div>
+    <div class="stat"><b>Dickie pend</b><div class="n">${S.pendDkQ}</div></div>
+    <div class="stat"><b>Present</b><div class="n" style="color:var(--green)">${S.ap}</div></div>
+    <div class="stat"><b>Absent</b><div class="n" style="color:var(--red)">${S.aa}</div></div>
+    <div class="stat"><b>Leave</b><div class="n" style="color:var(--amber)">${S.al}</div></div>
+  </div>
+  <div class="stats" style="margin-top:8px">
+    <div class="stat"><b>Total M²</b><div class="n">${totRaw().toFixed(0)}</div></div>
+    <div class="stat"><b>Used M²</b><div class="n">${totUsed().toFixed(0)}</div></div>
+    <div class="stat"><b>Reserved</b><div class="n">${totRes().toFixed(0)}</div></div>
+    <div class="stat"><b>Free M²</b><div class="n">${totFree().toFixed(0)}</div></div>
+    <div class="stat"><b>Order used</b><div class="n">${S.matUsed.toFixed(0)}</div></div>
+    <div class="stat"><b>Order res</b><div class="n">${S.matRes.toFixed(0)}</div></div>
+  </div>
+  <h3 style="margin:14px 0 6px;font-size:.95rem">By Model</h3>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem;min-width:520px">
+    <tr style="background:var(--card2)"><th style="padding:6px;text-align:left">Model</th><th>Ord</th><th>Qty</th><th>Cut</th><th>Stitch</th><th>Disp</th><th>Pend</th><th>Dickie</th><th>Need M²</th></tr>
+    ${modelRows}
+  </table></div>
+  <h3 style="margin:14px 0 6px;font-size:.95rem">By Party</h3>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem">
+    <tr style="background:var(--card2)"><th style="padding:6px;text-align:left">Party</th><th>Orders</th><th>Qty</th><th>Pending</th></tr>
+    ${partyRows}
+  </table></div>
+  <h3 style="margin:14px 0 6px;font-size:.95rem">By Design (material)</h3>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem;min-width:480px">
+    <tr style="background:var(--card2)"><th style="padding:6px;text-align:left">Design</th><th>Ord</th><th>Qty</th><th>Pend</th><th>Rolls</th><th>Used</th><th>Res</th><th>Free</th></tr>
+    ${designRows}
+  </table></div>
+  <h3 style="margin:14px 0 6px;font-size:.95rem">Rates (Mat + Dickie)</h3>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem">
+    <tr style="background:var(--card2)"><th style="padding:6px;text-align:left">Model</th><th>Mat</th><th>Dickie+</th><th>With Dk</th><th>Ready</th></tr>
+    ${rateRows}
+  </table></div>
+  <h3 style="margin:14px 0 6px;font-size:.95rem">Last 7 days</h3>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem">
+    <tr style="background:var(--card2)"><th style="padding:6px;text-align:left">Date</th><th>Cut</th><th>Stitch</th><th>Disp</th><th>Pend</th><th>Att</th><th>Free</th></tr>
+    ${histRows}
+  </table></div>`;
+  openM("mSum");
+}
+window.openSum=openSum;
+function printSum(){ const w=window.open("","_blank"); if(!w)return; w.document.write(`<html><head><title>Summary</title><style>body{font-family:Arial;padding:16px}table{border-collapse:collapse;width:100%;margin-bottom:12px}th,td{border:1px solid #000;padding:6px;font-size:12px}th{background:#eee}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.stat{border:1px solid #000;padding:8px;text-align:center}.n{font-size:16px;font-weight:bold}
+.oc{transition:transform .15s ease,box-shadow .15s ease;cursor:grab}
+.oc:active{cursor:grabbing;transform:scale(.98)}
+.oc.dragging{opacity:.5;transform:scale(.95)}
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;margin:8px 10px;color:var(--muted);font-size:.8rem;transition:all .15s}
+.drop-zone.over{border-color:var(--teal);background:var(--teal-dim);color:var(--teal)}
+.stage-btns{display:flex;gap:6px;margin-top:8px}
+.stage-btns button{flex:1;min-height:48px;font-weight:750;font-size:.8rem}
+.stage-btns .cut{background:#d97706}
+.stage-btns .stitch{background:#16a34a}
+.stage-btns .disp{background:#0d9488}
+.oc.done{opacity:.8}
+.premium-header{background:linear-gradient(180deg,rgba(20,184,166,.12),transparent)}
+
+</style></head><body><h1 style="text-align:center">PRODUCTION SUMMARY</h1>${$("sumC").innerHTML}<script>onload=()=>print()<\\/script></body></html>`); w.document.close(); }
+window.printSum=printSum;
+
+function csvCell(v){ return '"'+String(v??"").replaceAll('"','""')+'"'; }
+function downloadCSV(name, rows){
+  const blob=new Blob(["\\uFEFF"+rows.join("\\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),800);
+}
+
+function exportSumCSV(){
+  const S=buildSummaryData();
+  const rows=[];
+  rows.push(["Section","Key","Value1","Value2","Value3","Value4","Value5","Value6","Value7","Value8"].map(csvCell).join(","));
+  rows.push(["OVERVIEW","Orders",O.length,S.tq,"PendingPcs",S.pendQ,"Completed",S.done,"",""].map(csvCell).join(","));
+  rows.push(["PROGRESS","Cutting",S.tc,"Stitching",S.ts,"Dispatched",S.tx,"TodayJobs",D.length,"",""].map(csvCell).join(","));
+  rows.push(["DICKIE","WithDickie",S.withDk,"Without",S.withoutDk,"DickiePendingPcs",S.pendDkQ,"","","",""].map(csvCell).join(","));
+  rows.push(["ATTENDANCE",S.d,"Present",S.ap,"Absent",S.aa,"Leave",S.al,"Workers",W.length].map(csvCell).join(","));
+  rows.push(["MATERIAL","TotalM2",totRaw().toFixed(2),"Used",totUsed().toFixed(2),"Reserved",totRes().toFixed(2),"Free",totFree().toFixed(2),"",""].map(csvCell).join(","));
+  rows.push(["MODEL","Model","Orders","Qty","Cut","Stitch","Disp","Pending","DickieOrders","NeedM2"].map(csvCell).join(","));
+  Object.entries(S.models).sort((a,b)=>b[1].qty-a[1].qty).forEach(([k,v])=>{
+    rows.push(["MODEL",k,v.orders,v.qty,v.cut,v.stitch,v.disp,v.pend,v.dickie,v.mat.toFixed(2)].map(csvCell).join(","));
+  });
+  rows.push(["PARTY","Party","Orders","Qty","Pending","","","","",""].map(csvCell).join(","));
+  Object.entries(S.parties).sort((a,b)=>b[1].qty-a[1].qty).forEach(([k,v])=>{
+    rows.push(["PARTY",k,v.orders,v.qty,v.pend,"","","","",""].map(csvCell).join(","));
+  });
+  rows.push(["DESIGN","Design","Orders","Qty","Pending","Rolls","Used","Reserved","Free",""].map(csvCell).join(","));
+  Object.entries(S.designs).sort((a,b)=>b[1].qty-a[1].qty).forEach(([k,v])=>{
+    const info=dInfo(k); const tot=info.rolls*RM.rollSize; const free=tot-info.used-info.reserved;
+    rows.push(["DESIGN",k,v.orders,v.qty,v.pend,info.rolls.toFixed(2),info.used.toFixed(2),info.reserved.toFixed(2),free.toFixed(2),""].map(csvCell).join(","));
+  });
+  rows.push(["RATE","Model","MatM2","DickieExtra","WithDickieM2","ReadyStock","","","",""].map(csvCell).join(","));
+  Object.keys(RM.rates).sort().forEach(k=>{
+    const base=baseRate(k), dx=dickieRate(k);
+    rows.push(["RATE",k,base.toFixed(2),dx.toFixed(2),(base+dx).toFixed(2),ready(k),"","","",""].map(csvCell).join(","));
+  });
+  rows.push(["ORDER","Party","Model","Design","Due","Qty","Cut","Stitch","Disp","Dickie"].map(csvCell).join(","));
+  O.forEach(o=>{
+    rows.push(["ORDER",o.p,o.m,o.d,o.u,o.q,o.c,o.s,o.x,o.dickie?"YES":"NO"].map(csvCell).join(","));
+  });
+  downloadCSV("SUMMARY_"+today()+".csv", rows);
+  alert("Summary CSV downloaded");
+}
+window.exportSumCSV=exportSumCSV;
+
+function exportHistCSV(){
+  pruneHistory();
+  snapToday(true);
+  const keys=Object.keys(H||{}).sort();
+  if(!keys.length){ alert("No history yet. Save a snapshot first."); return; }
+  const rows=[];
+  rows.push(["Date","Orders","PendingPcs","Cutting","Stitching","Dispatched","DickiePending","TodayJobs","Present","Absent","Leave","Workers","FreeM2","UsedM2","SavedAt"].map(csvCell).join(","));
+  keys.forEach(k=>{
+    const h=H[k]||{};
+    rows.push([
+      k, h.orders||0, h.pending||0, h.cut||0, h.stitch||0, h.disp||0,
+      h.dickiePending||0, h.todayJobs||0, h.present||0, h.absent||0, h.leave||0,
+      h.workers||0, Number(h.freeM2||0).toFixed(2), Number(h.usedM2||0).toFixed(2),
+      h.savedAt?new Date(h.savedAt).toISOString():""
+    ].map(csvCell).join(","));
+  });
+  // also attendance detail for each day in range
+  rows.push("");
+  rows.push(["ATTENDANCE_DETAIL","Date","Worker","Status"].map(csvCell).join(","));
+  keys.forEach(k=>{
+    if(!A[k]) return;
+    W.forEach(w=>{
+      const st=A[k][w.id]||"";
+      if(st) rows.push(["ATTENDANCE_DETAIL",k,w.name,st].map(csvCell).join(","));
+    });
+  });
+  downloadCSV("HISTORY_30DAY_"+today()+".csv", rows);
+  alert("30-day history CSV downloaded\\nDays: "+keys.length);
+}
+window.exportHistCSV=exportHistCSV;
+
+function loadSample(){
+  const t=today();
+  RM={rollSize:45,dickieRates:{Baleno:2,Swift:3,Dzire:1.5},rates:{Baleno:5,Swift:4.5,Dzire:4},ready:{Baleno:2,Swift:1},designs:{"3D BLACK":{rolls:10,used:0,reserved:0},"3D GOLD":{rolls:10,used:0,reserved:0},"CRUSH BLACK":{rolls:10,used:0,reserved:0}}};
+  O=[
+    {id:1,p:"ABC Motors",m:"Baleno",d:"3D BLACK",u:t,q:10,c:5,s:5,x:10,matUsed:0,matReserved:0,dickie:false,parcels:[{qty:3,note:"Parcel 1"},{qty:7,note:"Parcel 2"}]},
+    {id:2,p:"XYZ Motors",m:"Baleno",d:"3D GOLD",u:t,q:10,c:0,s:0,x:0,matUsed:0,matReserved:0,dickie:true},
+    {id:3,p:"GHJ Motors",m:"Baleno",d:"CRUSH BLACK",u:t,q:6,c:0,s:0,x:0,matUsed:0,matReserved:0,dickie:false},
+    {id:4,p:"ABC Motors",m:"Swift",d:"3D BLACK",u:t,q:10,c:0,s:0,x:0,matUsed:0,matReserved:0,dickie:true}
+  ];
+  NID=5; D=[];
+  W=[{id:1,name:"Ramesh"},{id:2,name:"Suresh"},{id:3,name:"Mahesh"},{id:4,name:"Priya"}];
+  A={}; A[t]={1:"P",2:"P",3:"A",4:"P"};
+  H={};
+  scheduleSave(); fullRender(); renderAtt(); renderStock(); snapToday(true); alert("Sample loaded\nBaleno 5+2=7 · Swift 4.5+3=7.5 · Dzire 4+1.5=5.5");
+}
+window.loadSample=loadSample;
+
+function doBackup(){
+  try{
+    let z="Record Type,Party,Model,Design,Due Date,Qty,Cutting,Stitching,Dispatch,Material Used,Material Reserved,Roll Size,Allocated Rolls,Ready Stock,Model Rate,Dickie,Dickie Extra\n";
+    const c=v=>`"${String(v??"").replaceAll('"','""')}"`;
+    z+=["SETTINGS","","","","","","","","","","",RM.rollSize,"","","","",""].map(c).join(",")+"\n";
+    Object.keys(RM.designs).forEach(d=>{const x=RM.designs[d]; z+=["DESIGN_MATERIAL","","",d,"","","","","",x.used||0,x.reserved||0,"",x.rolls||0,"","","",""].map(c).join(",")+"\n";});
+    Object.keys(RM.ready).forEach(m=>{z+=["READY_STOCK","",m,"","","","","","","","","","",RM.ready[m]||0,"","",""].map(c).join(",")+"\n";});
+    Object.keys(RM.rates).forEach(m=>{z+=["MODEL_RATE","",m,"","","","","","","","","","","",RM.rates[m]||0,"",""].map(c).join(",")+"\n";});
+    Object.keys(RM.dickieRates||{}).forEach(m=>{z+=["MODEL_DICKIE","",m,"","","","","","","","","","","",RM.dickieRates[m]||0,"",""].map(c).join(",")+"\n";});
+    O.forEach(o=>{const pj=JSON.stringify(o.parcels||[]); z+=["ORDER",o.p,o.m,o.d,o.u,o.q,o.c,o.s,o.x,o.matUsed||0,o.matReserved||0,"","","","",o.dickie?"YES":"NO",pj].map(c).join(",")+"\n";});
+    const blob=new Blob(["\uFEFF"+z],{type:"text/csv;charset=utf-8"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="BACKUP_"+today()+".csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    alert("Downloaded");
+  }catch(e){alert("Backup failed");}
+}
+window.doBackup=doBackup;
+
+function pickFile(){ $("file").click(); }
+window.pickFile=pickFile;
+$("file").addEventListener("change", e=>{
+  const file=e.target.files&&e.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      let text=String(r.result||"").replace(/^\uFEFF/,"").replace(/\r/g,"\n");
+      const lines=text.split("\n").map(x=>x.trim()).filter(Boolean);
+      if(!lines.length)return alert("Empty");
+      if(!confirm("Replace all data?"))return;
+      const parse=line=>{let a=[],s="",q=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){if(q&&line[i+1]==='"'){s+='"';i++;}else q=!q;}else if((c===","||c===";")&&!q){a.push(s);s="";}else s+=c;}a.push(s);return a;};
+      let newO=[],newN=1,newRM={rollSize:45,dickieRates:{},ready:{},rates:{},designs:{}};
+      for(let i=1;i<lines.length;i++){
+        const v=parse(lines[i]).map(x=>String(x??"").replace(/^"|"$/g,"").trim());
+        const t=String(v[0]||"").toUpperCase().replace(/\s+/g,"_");
+        if(t==="SETTINGS"){const rs=Number(v[11]);if(isFinite(rs)&&rs>0)newRM.rollSize=rs;}
+        if(t==="DESIGN_MATERIAL"){const d=v[3];if(d)newRM.designs[d]={rolls:Number(v[12])||0,used:Math.max(0,Number(v[9])||0),reserved:Math.max(0,Number(v[10])||0)};}
+        if(t==="READY_STOCK"){const m=v[2];if(m)newRM.ready[m]=n(v[13]);}
+        if(t==="MODEL_RATE"){const m=v[2],rt=Number(v[14]);if(m&&isFinite(rt))newRM.rates[m]=rt;}
+        if(t==="MODEL_DICKIE"){const m=v[2],rt=Number(v[14]);if(m&&isFinite(rt)){if(!newRM.dickieRates)newRM.dickieRates={};newRM.dickieRates[m]=rt;}}
+        if(t==="ORDER"){const qq=n(v[5]);if(!qq)continue;const dickie=String(v[15]||"").toUpperCase()==="YES";let parcels=[];try{if(v[16])parcels=JSON.parse(v[16]);}catch(e){}newO.push({id:newN++,p:v[1]||"",m:v[2]||"",d:v[3]||"",u:v[4]||"",q:qq,c:Math.min(n(v[6]),qq),s:Math.min(n(v[7]),qq),x:Math.min(n(v[8]),qq),matUsed:Math.max(0,Number(v[9])||0),matReserved:Math.max(0,Number(v[10])||0),dickie,parcels:Array.isArray(parcels)?parcels:[]});}
+      }
+      O=newO;D=[];NID=newN;RM=newRM; scheduleSave(); fullRender(); renderStock(); alert("Restored "+newO.length+" orders");
+    }catch(err){alert("Restore failed");}
+  };
+  r.readAsText(file,"UTF-8");
+  e.target.value="";
+});
+
+
+function changeName(){
+  const cur=getMyName();
+  const n=prompt("Your name (shown on every edit):",cur);
+  if(n===null) return;
+  const name=n.trim();
+  if(!name) return alert("Name required");
+  setMyName(name);
+  registerDevice();
+  renderAudit();
+  alert("Name set to "+name);
+}
+window.changeName=changeName;
+function renderAudit(){
+  const el=$("auditList");
+  if(!el) return;
+  const list=(AUDIT||[]).slice().reverse().slice(0,15);
+  if(!list.length){ el.innerHTML='<div class="empty" style="padding:8px">No edits yet</div>'; return; }
+  el.innerHTML=list.map(a=>{
+    const tm=new Date(a.t).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+    return `<div class="li" style="padding:8px;margin-bottom:4px"><b>${esc(a.by||"?")}</b> · ${esc(a.action)}<br><span class="muted" style="font-size:.72rem">${esc(a.detail)} · ${tm}</span></div>`;
+  }).join("");
+  const md=$("myNameDisplay");
+  if(md) md.textContent="This phone: "+(MY_NAME||"not set")+" · Device "+(MY_ID||"").slice(0,8);
+}
+function renderLog(){
+  const el=$("logList");
+  if(!el) return;
+  const list=(AUDIT||[]).slice().reverse();
+  if(!list.length){ el.innerHTML='<div class="empty">No changes recorded yet.<br>Edits, adds, deletes and attendance will appear here.</div>'; return; }
+  el.innerHTML=list.map(a=>{
+    const tm=new Date(a.t).toLocaleString("en-IN",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+    return `<div class="li" style="padding:10px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+        <div><b style="color:var(--teal)">${esc(a.by||"Unknown")}</b> · ${esc(a.action)}</div>
+        <span class="muted" style="font-size:.7rem;white-space:nowrap">${tm}</span>
+      </div>
+      ${a.detail?`<div class="muted" style="font-size:.78rem;margin-top:4px">${esc(a.detail)}</div>`:""}
+    </div>`;
+  }).join("");
+}
+window.renderLog=renderLog;
+function exportLogCSV(){
+  const list=(AUDIT||[]).slice().reverse();
+  if(!list.length){ alert("No log entries yet"); return; }
+  const rows=["When,Who,Action,Detail".split(",").map(csvCell).join(",")];
+  list.forEach(a=>{
+    const tm=new Date(a.t).toISOString();
+    rows.push([tm, a.by||"", a.action||"", a.detail||""].map(csvCell).join(","));
+  });
+  downloadCSV("CHANGE_LOG_"+today()+".csv", rows);
+  alert("Log CSV downloaded");
+}
+window.exportLogCSV=exportLogCSV;
+
+
+let dragId=null;
+function dragStart(e,id){ dragId=id; e.target.classList.add("dragging"); e.dataTransfer.setData("text/plain",id); }
+function dragEnd(e){ e.target.classList.remove("dragging"); dragId=null; }
+function allowDrop(e){ e.preventDefault(); e.currentTarget.classList.add("over"); }
+function leaveDrop(e){ e.currentTarget.classList.remove("over"); }
+function dropStage(e,stage){
+  e.preventDefault();
+  e.currentTarget.classList.remove("over");
+  const id=Number(e.dataTransfer.getData("text/plain")||dragId);
+  if(id) quickStage(id,stage);
+}
+
+function recalcMaterial(){
+  // Reset all design used to 0, then sum from orders
+  Object.keys(RM.designs||{}).forEach(k=>{ RM.designs[k].used=0; });
+  O.forEach(o=>{
+    const cut=Number(o.c||0);
+    if(cut<=0) return;
+    const r=rateOf(o);
+    const used=cut*r;
+    o.matUsed=used;
+    const f=Object.keys(RM.designs).find(k=>dk(k)===dk(o.d));
+    if(f) RM.designs[f].used=Number(RM.designs[f].used||0)+used;
+  });
+}
+
+function quickStage(id,stage){
+  const o=O.find(x=>x.id==id); if(!o) return;
+  const max=o.q;
+  let val=0;
+  if(stage==="c") val=Math.min(max, o.c+1);
+  else if(stage==="s") val=Math.min(max, Math.max(o.s, o.c));
+  else if(stage==="x") val=Math.min(max, Math.max(o.x, o.s));
+  if(stage==="c") o.c=val;
+  if(stage==="s") o.s=val;
+  if(stage==="x") o.x=val;
+  o.editedBy=MY_NAME; o.editedAt=Date.now();
+  logEdit("Stage "+stage.toUpperCase(), o.p+" · "+o.m+" → "+val);
+  recalcMaterial();
+  scheduleSave(); fullRender();
+}
+window.dragStart=dragStart; window.dragEnd=dragEnd; window.allowDrop=allowDrop; window.leaveDrop=leaveDrop; window.dropStage=dropStage; window.quickStage=quickStage;
+
+loadLocal();
+recalcMaterial();
+fullRender();
+renderAtt();
+renderStock();
+setSync("ok");
+ensureName();
+renderAudit();
+// Force search/filter to always re-render
+["q","f","so"].forEach(id=>{
+  const el=$(id);
+  if(el) el.addEventListener("input", softRender);
+  if(el) el.addEventListener("change", softRender);
+});
+// auto snapshot once per day load
+try{ const last=localStorage.getItem("pSnapDay"); if(last!==today()){ snapToday(true); localStorage.setItem("pSnapDay",today()); } }catch(e){}
+</script>
+</body>
+</html>
