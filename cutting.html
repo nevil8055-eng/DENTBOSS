@@ -5,37 +5,42 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Cutting</title>
 <style>
-:root{--bg:#0a0f1a;--card:#1a2332;--text:#f1f5f9;--muted:#94a3b8;--teal:#14b8a6;--border:rgba(148,163,184,.15)}
+:root{--bg:#0a0f1a;--card:#1a2332;--text:#f1f5f9;--border:rgba(148,163,184,.15)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:system-ui;padding:12px 12px 80px}
 .header{text-align:center;padding:12px;font-weight:750}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
 .order{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
 .party{font-weight:750;color:#5eead4}
-.model{color:#fbbf24;font-size:.9rem}
-button{border:0;border-radius:10px;padding:12px;background:#0d9488;color:#fff;font-weight:700}
-.nav{position:fixed;bottom:0;left:0;right:0;background:#0a0f1a;border-top:1px solid var(--border);display:flex}
-.nav button{background:transparent;color:var(--muted);border-radius:0;padding:10px;flex:1}
-.nav button.on{color:var(--teal);background:rgba(20,184,166,.15)}
-.section{display:none}.section.on{display:block}
-input{width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var(--border);border-radius:8px;margin:4px 0}
+.model{color:#fbbf24}
+button{border:0;border-radius:10px;padding:12px;background:#0d9488;color:#fff;font-weight:700;cursor:pointer}
 .row{display:flex;gap:8px;margin-top:8px}
 .row button{flex:1}
-.parties{display:flex;gap:6px;overflow-x:auto;padding:6px 0;margin-bottom:8px}.parties button{padding:8px 12px;border-radius:20px;background:#1e293b;color:#94a3b8;font-size:.8rem;white-space:nowrap}.parties button.on{background:#0d9488;color:#fff}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#0a0f1a;border-top:1px solid var(--border);display:flex}
+.nav button{background:transparent;color:#94a3b8;border-radius:0;flex:1}
+.nav button.on{color:#14b8a6;background:rgba(20,184,166,.15)}
+.section{display:none}.section.on{display:block}
+input{width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+.parties{display:flex;gap:6px;overflow-x:auto;padding:6px 0;margin-bottom:8px}
+.parties button{padding:8px 12px;border-radius:20px;background:#1e293b;color:#94a3b8;font-size:.8rem}
+.parties button.on{background:#0d9488;color:#fff}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
 </style>
 </head>
 <body>
 <div class="header">Cutting Dashboard</div>
 <section id="orders" class="section on">
-  <input id="q" placeholder="Search party or model..." oninput="render()" style="width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
+  <input id="q" placeholder="Search party or model..." oninput="render()">
   <div id="partyBar" class="parties"></div>
   <div id="list"></div>
 </section>
+<section id="today" class="section">
+  <div class="card"><b>Today's Work</b><p style="color:#94a3b8;font-size:.8rem">Assigned by Boss</p></div>
+  <div id="todayList"></div>
+</section>
 <section id="rates" class="section">
-  <div class="card"><b>Update M² Rates</b><p style="color:var(--muted);font-size:.8rem">Mat + Dickie extra for each car</p></div>
+  <div class="card"><b>M² Rates</b></div>
   <div id="rateList"></div>
 </section>
-<section id="today" class="section"><div class="card"><b>Today's Work</b><p style="color:#94a3b8;font-size:.8rem">Assigned by Boss</p></div><div id="todayList"></div></section>
 <nav class="nav">
   <button class="on" onclick="show('orders',this)">Orders</button>
   <button onclick="show('today',this)">Today</button>
@@ -47,18 +52,44 @@ import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebase
 const cfg={apiKey:"AIzaSyDgasnH2Jf05M2M48r8VmODPYXGOxqZVgU",authDomain:"d-ent-379f4.firebaseapp.com",databaseURL:"https://d-ent-379f4-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"d-ent-379f4"};
 const db=getDatabase(initializeApp(cfg));
 const dataRef=ref(db,"production");
-let O=[], RM={rates:{},dickieRates:{}};
-let D=[];
+let O=[], RM={rates:{},dickieRates:{}}, D=[], PARTY="";
 onValue(dataRef, snap=>{
   const d=snap.val()||{};
-  O=d.O||[]; RM=d.RM||{rates:{},dickieRates:{}};
-  D=d.D||[];
-  if(!RM.dickieRates) RM.dickieRates={};
+  O=Array.isArray(d.O)?d.O:[];
+  RM=d.RM||{rates:{},dickieRates:{}};
+  D=Array.isArray(d.D)?d.D:[];
   render();
+  renderToday();
 });
+function show(id,btn){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("on"));
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("on"));
+  document.getElementById(id).classList.add("on");
+  if(btn) btn.classList.add("on");
+  if(id==="today") renderToday();
+  if(id==="rates") renderRates();
+}
+window.show=show;
+function render(){
+  const q=(document.getElementById("q").value||"").toLowerCase();
+  const parties=[...new Set(O.map(o=>o.p).filter(Boolean))];
+  document.getElementById("partyBar").innerHTML=`<button class="${!PARTY?"on":""}" onclick="setP('')">All</button>`+parties.map(p=>`<button class="${PARTY===p?"on":""}" onclick="setP('${p.replace(/'/g,"")}')">${p}</button>`).join("");
+  let L=O.slice();
+  if(PARTY) L=L.filter(o=>o.p===PARTY);
+  if(q) L=L.filter(o=>(o.p+" "+o.m).toLowerCase().includes(q));
+  document.getElementById("list").innerHTML=L.map(o=>`
+    <div class="order">
+      <div class="party">${o.p}</div>
+      <div class="model">${o.m} · ${o.d}</div>
+      <div>Cut <b>${o.c||0}</b> / ${o.q}</div>
+      <div class="row">
+        <button onclick="chg(${o.id},-1)">−1</button>
+        <button onclick="chg(${o.id},1)">+1</button>
+      </div>
+    </div>`).join("")||"<div style='text-align:center;color:#64748b;padding:40px'>No orders</div>";
+}
 function renderToday(){
   const el=document.getElementById("todayList");
-  if(!el) return;
   if(!D.length){ el.innerHTML="<div style='text-align:center;color:#64748b;padding:40px'>No work assigned today</div>"; return; }
   el.innerHTML=D.map(w=>{
     const o=O.find(x=>x.id==w.id);
@@ -66,72 +97,31 @@ function renderToday(){
     return `<div class="order"><div class="party">${o.p}</div><div class="model">${o.m} · ${o.d}</div><div>Qty ${w.q}</div></div>`;
   }).join("");
 }
-function show(id,btn){
-  document.querySelectorAll(".section").forEach(s=>s.classList.remove("on"));
-  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("on"));
-  document.getElementById(id).classList.add("on");
-  if(btn) btn.classList.add("on");
-  if(id==="rates") renderRates();
-  if(id==="today") renderToday();
-}
-window.show=show;
-let PARTY="";
-function render(){
-  const q=(document.getElementById("q")?.value||"").toLowerCase();
-  const parties=[...new Set(O.map(o=>o.p).filter(Boolean))];
-  const bar=document.getElementById("partyBar");
-  if(bar) bar.innerHTML=`<button class="${PARTY===""?"on":""}" onclick="setParty('')">All</button>`+parties.map(p=>`<button class="${PARTY===p?"on":""}" onclick="setParty('${p.replace(/'/g,"\\'")}')">${p}</button>`).join("");
-  let L=O;
-  if(PARTY) L=L.filter(o=>o.p===PARTY);
-  if(q) L=L.filter(o=>(o.p+" "+o.m).toLowerCase().includes(q));
-  document.getElementById("list").innerHTML=L.map(o=>`
-    <div class="order">
-      <div class="party">${o.p}</div>
-      <div class="model">${o.m} · ${o.d} ${o.dickie?"· Dickie":""}</div>
-      <div>Cut <b>${o.c}</b> / ${o.q}</div>
-      <div class="row">
-        <button onclick="chg(${o.id},-1)">−1</button>
-        <button onclick="chg(${o.id},1)">+1</button>
-      </div>
-    </div>`).join("")||"<div style='text-align:center;color:#64748b;padding:20px'>No orders</div>";
-}
 function renderRates(){
   const keys=Object.keys(RM.rates||{}).sort();
   document.getElementById("rateList").innerHTML=keys.map(k=>`
-    <div class="card">
-      <b>${k}</b>
-      <label style="font-size:.75rem;color:#94a3b8">Mat M²</label>
-      <input type="number" id="rm${k}" value="${RM.rates[k]||0}" step="0.1">
-      <label style="font-size:.75rem;color:#94a3b8">Dickie Extra M²</label>
-      <input type="number" id="rd${k}" value="${RM.dickieRates[k]||0}" step="0.1">
-      <button onclick="saveRate('${k}')" style="width:100%;margin-top:6px">Update</button>
-    </div>`).join("");
+    <div class="card"><b>${k}</b>
+    <input id="rm${k}" type="number" value="${RM.rates[k]||0}" step="0.1" placeholder="Mat">
+    <input id="rd${k}" type="number" value="${(RM.dickieRates||{})[k]||0}" step="0.1" placeholder="Dickie">
+    <button onclick="saveR('${k}')" style="width:100%;margin-top:6px">Update</button></div>`).join("");
 }
-function log(action, detail){
-  const L=JSON.parse(localStorage.getItem("pLog")||"[]");
-  L.push({t:Date.now(), by:"Cutting", action, detail});
-  if(L.length>200) L.splice(0, L.length-200);
-  localStorage.setItem("pLog", JSON.stringify(L));
-  set(ref(db,"production/LOG"), L);
-}
+window.setP=p=>{PARTY=p;render();};
 window.chg=function(id,delta){
   const o=O.find(x=>x.id==id); if(!o) return;
   o.c=Math.max(0, Math.min(o.q, Number(o.c||0)+delta));
-  log("Cutting", o.p+" · "+o.m+" → "+o.c+"/"+o.q);
-  // cascading: stitch and dispatch cannot exceed cutting
   if(o.s>o.c) o.s=o.c;
   if(o.x>o.s) o.x=o.s;
-  set(dataRef,{O,RM});
+  set(dataRef,{O,RM,D});
 };
-window.saveRate=function(m){
+window.saveR=function(m){
   const mv=Number(document.getElementById("rm"+m).value);
   const dv=Number(document.getElementById("rd"+m).value);
-  if(isFinite(mv)&&mv>=0) RM.rates[m]=mv;
-  if(isFinite(dv)&&dv>=0) RM.dickieRates[m]=dv;
-  set(dataRef,{O,RM});
+  if(isFinite(mv)) RM.rates[m]=mv;
+  if(!RM.dickieRates) RM.dickieRates={};
+  if(isFinite(dv)) RM.dickieRates[m]=dv;
+  set(dataRef,{O,RM,D});
   alert("Saved");
 };
-window.setParty=function(p){ PARTY=p; render(); };
 </script>
 </body>
 </html>
