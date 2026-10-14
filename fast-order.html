@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fast Order</title>
+<style>
+:root{--bg:#0a0f1a;--card:#1a2332;--text:#f1f5f9;--border:rgba(148,163,184,.15)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui;padding:12px 12px 80px}
+.header{text-align:center;padding:10px;font-weight:750}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+label{display:block;font-size:.7rem;color:#94a3b8;margin-bottom:4px}
+input,select{width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.row input{flex:1;margin:0}
+button{border:0;border-radius:10px;padding:12px;background:#0d9488;color:#fff;font-weight:700}
+.model{display:flex;gap:8px;align-items:center;padding:8px;background:#111827;border-radius:8px;margin-bottom:6px}
+.model input{margin:0;flex:1}
+.model .qty{width:70px;flex:none}
+.rm{background:#dc2626;padding:8px 12px;border-radius:8px;font-size:.8rem}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#0a0f1a;border-top:1px solid var(--border);display:flex}
+.nav button{background:transparent;color:#94a3b8;border-radius:0;flex:1}
+.nav button.on{color:#14b8a6;background:rgba(20,184,166,.15)}
+.section{display:none}.section.on{display:block}
+.sug{background:#1e293b;border-radius:8px;max-height:120px;overflow:auto;margin-bottom:8px}
+.sug div{padding:8px;cursor:pointer}
+.sug div:active{background:#0d9488}
+.order{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
+.party{font-weight:750;color:#5eead4}
+.modeln{color:#fbbf24}
+</style>
+</head>
+<body>
+<div class="header">Fast Order</div>
+<section id="pending" class="section on">
+  <input id="q" placeholder="Search party or model..." oninput="renderPending()">
+  <div id="partyBar" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:8px"></div>
+  <div id="list"></div>
+</section>
+<section id="add" class="section">
+  <div class="card">
+    <label>Party</label>
+    <input id="party" placeholder="Party name">
+    <label>Design</label>
+    <input id="design" placeholder="e.g. 3D CHEX BLACK" value="3D CHEX BLACK">
+    <label>Due Date</label>
+    <input id="due" type="date">
+    <label style="display:flex;align-items:center;gap:8px"><input id="dk" type="checkbox" style="width:auto"> With Dickie</label>
+  </div>
+  <div class="card">
+    <b>Models</b>
+    <div id="models"></div>
+    <input id="newM" placeholder="Type model (suggests from rates)" oninput="suggest()" onfocus="suggest()">
+    <div id="sug" class="sug"></div>
+    <div class="row">
+      <input id="newQ" type="number" value="10" style="width:70px">
+      <button onclick="addM()" style="width:auto;padding:10px 16px">Add</button>
+    </div>
+  </div>
+  <button onclick="saveAll()" style="width:100%;background:#16a34a">Save All Orders</button>
+  <div id="msg" style="text-align:center;margin-top:10px;color:#5eead4"></div>
+</section>
+<section id="rates" class="section">
+  <div class="card"><b>Rates (Mat + Dickie)</b></div>
+  <div id="rateList"></div>
+  <div class="card"><b>Raw Material</b></div>
+  <div id="rmList"></div>
+</section>
+<nav class="nav">
+  <button class="on" onclick="show('pending',this)">Pending</button>
+  <button onclick="show('add',this)">Add Order</button>
+  <button onclick="show('rates',this)">Rates / RM</button>
+</nav>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getDatabase, ref, get, update, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+const cfg={apiKey:"AIzaSyDgasnH2Jf05M2M48r8VmODPYXGOxqZVgU",authDomain:"d-ent-379f4.firebaseapp.com",databaseURL:"https://d-ent-379f4-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"d-ent-379f4"};
+const db=getDatabase(initializeApp(cfg));
+const dataRef=ref(db,"production");
+let O=[], RM={rates:{},dickieRates:{},designs:{}}, models=[], PARTY="";
+const today=new Date().toISOString().slice(0,10);
+document.getElementById("due").value=today;
+onValue(dataRef, snap=>{
+  const d=snap.val()||{};
+  O=Array.isArray(d.O)?d.O:[];
+  RM=d.RM||{rates:{},dickieRates:{},designs:{}};
+  renderPending();
+  renderRates();
+});
+function show(id,btn){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("on"));
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("on"));
+  document.getElementById(id).classList.add("on");
+  if(btn) btn.classList.add("on");
+  if(id==="rates") renderRates();
+}
+window.show=show;
+function renderPending(){
+  const q=(document.getElementById("q").value||"").toLowerCase();
+  const parties=[...new Set(O.map(o=>o.p).filter(Boolean))];
+  document.getElementById("partyBar").innerHTML=`<button onclick="setP('')" style="padding:8px 12px;border-radius:20px;background:${!PARTY?"#0d9488":"#1e293b"};color:#fff;font-size:.8rem">All</button>`+parties.map(p=>`<button onclick="setP('${p.replace(/'/g,"")}')" style="padding:8px 12px;border-radius:20px;background:${PARTY===p?"#0d9488":"#1e293b"};color:#fff;font-size:.8rem">${p}</button>`).join("");
+  let L=O.filter(o=>(o.q||0)>(o.x||0));
+  if(PARTY) L=L.filter(o=>o.p===PARTY);
+  if(q) L=L.filter(o=>(o.p+" "+o.m).toLowerCase().includes(q));
+  document.getElementById("list").innerHTML=L.map(o=>`
+    <div class="order"><div class="party">${o.p}</div><div class="modeln">${o.m} · ${o.d}</div>
+    <div>Pending ${o.q-(o.x||0)} of ${o.q}</div></div>`).join("")||"<div style='text-align:center;color:#64748b;padding:40px'>No pending</div>";
+}
+window.setP=p=>{PARTY=p;renderPending();};
+window.suggest=function(){
+  const v=(document.getElementById("newM").value||"").toLowerCase();
+  const all=Object.keys(RM.rates||{});
+  const keys=v?all.filter(k=>k.toLowerCase().includes(v)).slice(0,10):all.slice(0,10);
+  document.getElementById("sug").innerHTML=keys.map(k=>`<div onclick="window.pick('${k.replace(/'/g,"\\'")}')">${k} · ${RM.rates[k]} m²</div>`).join("")||"<div style='padding:8px;color:#64748b'>No match</div>";
+};
+window.pick=function(k){document.getElementById("newM").value=k;document.getElementById("sug").innerHTML="";};
+function renderModels(){
+  document.getElementById("models").innerHTML=models.map((m,i)=>`
+    <div class="model"><input value="${m.name}" onchange="models[${i}].name=this.value">
+    <input class="qty" type="number" value="${m.qty}" onchange="models[${i}].qty=Number(this.value)||1">
+    <button class="rm" onclick="rm(${i})">×</button></div>`).join("")||"<div style='color:#64748b;padding:8px'>No models yet</div>";
+}
+window.addM=()=>{
+  const n=document.getElementById("newM").value.trim();
+  const q=Number(document.getElementById("newQ").value)||10;
+  if(!n) return alert("Enter model");
+  models.push({name:n,qty:q});
+  document.getElementById("newM").value="";
+  document.getElementById("sug").innerHTML="";
+  renderModels();
+};
+window.rm=i=>{models.splice(i,1);renderModels();};
+window.saveAll=async()=>{
+  const party=document.getElementById("party").value.trim();
+  const design=document.getElementById("design").value.trim();
+  const due=document.getElementById("due").value;
+  const dk=document.getElementById("dk").checked;
+  if(!party) return alert("Enter party");
+  if(!models.length) return alert("Add models");
+  const snap=await get(dataRef);
+  const d=snap.val()||{};
+  const cur=Array.isArray(d.O)?d.O:[];
+  let nid=Number(d.NID)||1;
+  models.forEach(m=>{ cur.push({id:nid++, p:party, m:m.name, d:design, u:due, q:m.qty, c:0, s:0, x:0, matUsed:0, matReserved:0, dickie:dk}); });
+  await update(dataRef,{O:cur, NID:nid});
+  document.getElementById("msg").textContent="Saved "+models.length+" orders";
+  models=[];
+  renderModels();
+  setTimeout(()=>document.getElementById("msg").textContent="",2000);
+};
+function renderRates(){
+  const keys=Object.keys(RM.rates||{}).sort();
+  document.getElementById("rateList").innerHTML=keys.map(k=>`
+    <div class="card"><b>${k}</b>
+    <div class="row"><input id="rm${k}" type="number" value="${RM.rates[k]||0}" step="0.1" placeholder="Mat">
+    <input id="rd${k}" type="number" value="${(RM.dickieRates||{})[k]||0}" step="0.1" placeholder="Dickie">
+    <button onclick="saveR('${k}')" style="width:auto;padding:10px">Save</button></div></div>`).join("")||"<div style='color:#64748b;padding:12px'>No rates</div>";
+  document.getElementById("rateList").innerHTML+=`<div class="card"><b>Add New Model</b>
+    <input id="newRateName" placeholder="Model name">
+    <div class="row"><input id="newRateMat" type="number" placeholder="Mat m²" value="5">
+    <input id="newRateDk" type="number" placeholder="Dickie+" value="0">
+    <button onclick="addRate()" style="width:auto;padding:10px">Add</button></div></div>`;
+  const des=Object.keys(RM.designs||{});
+  document.getElementById("rmList").innerHTML=des.map(d=>{
+    const x=RM.designs[d]||{};
+    return `<div class="card"><b>${d}</b>
+    <div class="row"><input id="rolls${d}" type="number" value="${x.rolls||0}" placeholder="Rolls">
+    <button onclick="saveRM('${d}')" style="width:auto;padding:10px">Save</button></div></div>`;
+  }).join("")||"<div style='color:#64748b;padding:12px'>No designs</div>";
+}
+window.saveR=async function(m){
+  const mv=Number(document.getElementById("rm"+m).value);
+  const dv=Number(document.getElementById("rd"+m).value);
+  if(isFinite(mv)) RM.rates[m]=mv;
+  if(!RM.dickieRates) RM.dickieRates={};
+  if(isFinite(dv)) RM.dickieRates[m]=dv;
+  await update(dataRef,{RM});
+  alert("Saved");
+};
+window.addRate=async function(){
+  const n=document.getElementById("newRateName").value.trim();
+  if(!n) return alert("Enter model name");
+  const mv=Number(document.getElementById("newRateMat").value);
+  const dv=Number(document.getElementById("newRateDk").value);
+  if(!RM.rates) RM.rates={};
+  RM.rates[n]=isFinite(mv)?mv:5;
+  if(!RM.dickieRates) RM.dickieRates={};
+  RM.dickieRates[n]=isFinite(dv)?dv:0;
+  await update(dataRef,{RM});
+  document.getElementById("newRateName").value="";
+  alert("Added "+n);
+  renderRates();
+};
+window.saveRM=async function(d){
+  const r=Number(document.getElementById("rolls"+d).value)||0;
+  if(!RM.designs[d]) RM.designs[d]={rolls:0,used:0,reserved:0};
+  RM.designs[d].rolls=r;
+  await update(dataRef,{RM});
+  alert("Saved");
+};
+renderModels();
+</script>
+</body>
+</html>
