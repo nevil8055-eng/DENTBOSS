@@ -43,7 +43,7 @@ input{width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var
 </nav>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 const cfg={apiKey:"AIzaSyDgasnH2Jf05M2M48r8VmODPYXGOxqZVgU",authDomain:"d-ent-379f4.firebaseapp.com",databaseURL:"https://d-ent-379f4-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"d-ent-379f4"};
 const db=getDatabase(initializeApp(cfg));
 const dataRef=ref(db,"production");
@@ -117,7 +117,7 @@ window.chg=function(id,delta){
   const o=O.find(x=>x.id==id); if(!o) return;
   o.s=Math.max(0, Math.min(o.c, Number(o.s||0)+delta));
   if(o.x>o.s) o.x=o.s;
-  set(dataRef,{O,RM,D});
+  update(dataRef,{O,RM});
 };
 </script>
 </body>

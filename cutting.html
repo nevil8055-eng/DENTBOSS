@@ -48,7 +48,7 @@ input{width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var
 </nav>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 const cfg={apiKey:"AIzaSyDgasnH2Jf05M2M48r8VmODPYXGOxqZVgU",authDomain:"d-ent-379f4.firebaseapp.com",databaseURL:"https://d-ent-379f4-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"d-ent-379f4"};
 const db=getDatabase(initializeApp(cfg));
 const dataRef=ref(db,"production");
@@ -142,7 +142,7 @@ window.chg=function(id,delta){
   o.c=Math.max(0, Math.min(o.q, Number(o.c||0)+delta));
   if(o.s>o.c) o.s=o.c;
   if(o.x>o.s) o.x=o.s;
-  set(dataRef,{O,RM,D});
+  update(dataRef,{O,RM});
 };
 window.saveR=function(m){
   const mv=Number(document.getElementById("rm"+m).value);
@@ -150,7 +150,7 @@ window.saveR=function(m){
   if(isFinite(mv)) RM.rates[m]=mv;
   if(!RM.dickieRates) RM.dickieRates={};
   if(isFinite(dv)) RM.dickieRates[m]=dv;
-  set(dataRef,{O,RM,D});
+  update(dataRef,{O,RM});
   alert("Saved");
 };
 </script>

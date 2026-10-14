@@ -51,7 +51,7 @@ window.doConfirm=function(){ alert("Loading..."); };
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 const cfg={apiKey:"AIzaSyDgasnH2Jf05M2M48r8VmODPYXGOxqZVgU",authDomain:"d-ent-379f4.firebaseapp.com",databaseURL:"https://d-ent-379f4-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"d-ent-379f4"};
 const db=getDatabase(initializeApp(cfg));
 const dataRef=ref(db,"production");
@@ -115,7 +115,7 @@ function renderToday(){
   if(!D.length){ el.innerHTML="<div style='text-align:center;color:#64748b;padding:40px'>None</div>"; return; }
   el.innerHTML=D.map(w=>{const o=O.find(x=>x.id==w.id); return o?`<div class="order"><div class="party">${gu(o.p)}</div><div class="model">${gu(o.m)}</div><div>Qty ${w.q}</div></div>`:"";}).join("");
 }
-window.chg=(id,d)=>{const o=O.find(x=>x.id==id);if(!o)return;o.x=Math.max(0,Math.min(o.s,Number(o.x||0)+d));set(dataRef,{O,RM,D,PARCELS:PS});};
+window.chg=(id,d)=>{const o=O.find(x=>x.id==id);if(!o)return;o.x=Math.max(0,Math.min(o.s,Number(o.x||0)+d));update(dataRef,{O,RM});};
 function used(oid){let n=0;PS.forEach(p=>(p.items||[]).forEach(it=>{if(it.oid===oid)n+=Number(it.qty)||0;}));return n;}
 function renderP(){
   const ready=O.filter(o=>Number(o.s||0)>0);
@@ -158,7 +158,7 @@ window.doConfirm=function(){
   const add={};
   clean.forEach(p=>(p.items||[]).forEach(it=>{add[it.oid]=(add[it.oid]||0)+it.qty;}));
   O.forEach(o=>{if(add[o.id]) o.x=Math.min(Number(o.s||0), Number(o.x||0)+add[o.id]);});
-  set(dataRef,{O,RM,D,PARCELS:clean})
+  update(dataRef,{O,RM,PARCELS:clean})
     .then(()=>alert("Confirmed! "+count+" items saved and marked dispatched"))
     .catch(e=>alert("Failed: "+(e.message||"error")));
   }catch(err){ alert("Error: "+err.message); }

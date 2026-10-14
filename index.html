@@ -125,6 +125,7 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal)}
 <header class="header premium-header">
   <h1>Production Control</h1>
   <div class="sub">Boss Dashboard</div>
+  <button id="langBtn" onclick="toggleLang()" style="position:absolute;right:14px;top:14px;padding:6px 10px;font-size:.7rem;background:#1e293b;border:0;color:#fff;border-radius:8px">EN</button>
   <div id="whoAmI" class="sync" style="font-size:.72rem;color:var(--teal);cursor:pointer" onclick="changeName()">You: —</div>
   <div class="sync"><span class="dot" id="syncDot"></span><span id="syncText">Starting...</span></div>
 </header>
@@ -194,7 +195,7 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal)}
     </div>
     <div class="row">
       <button class="bg" onclick="pickFile()">Restore</button>
-    
+      <button class="bg" onclick="loadSample()">Sample</button>
     </div>
     <input id="file" type="file" accept=".csv,text/csv">
     <p class="muted" style="margin-top:8px;text-align:center;font-size:.74rem">Cloud sync · 30-day history kept</p>
@@ -457,6 +458,8 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--teal)}
   <div class="box">
     <h2>Today's Work</h2>
     <p class="muted">Tick jobs + enter qty</p>
+    <input id="dayQ" placeholder="Search party or model..." oninput="openDay()" style="margin-bottom:8px">
+    <div id="dayParties" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:8px"></div>
     <div id="days"></div>
     <div class="row" style="margin-top:14px">
       <button class="bp" onclick="saveDay()">Save</button>
@@ -677,6 +680,21 @@ function loadLocal(){
   }catch(e){O=[];D=[];NID=1;RM={rollSize:45,dickieRates:{},ready:{},rates:{},designs:{}};W=[];A={};H={};}
 }
 
+onValue(ref(db,"production/PARCELS"), snap=>{
+  const el=document.getElementById("parcelView");
+  if(!el) return;
+  const P=Array.isArray(snap.val())?snap.val():[];
+  if(!P.length){ el.innerHTML='<div class="empty">No parcels yet</div>'; return; }
+  let total=0;
+  el.innerHTML=P.map((p,i)=>{
+    const map={};
+    (p.items||[]).forEach(it=>{ if(it&&it.model) map[it.model]=(map[it.model]||0)+(Number(it.qty)||0); });
+    const qty=Object.values(map).reduce((s,q)=>s+q,0);
+    total+=qty;
+    const text=Object.entries(map).map(([m,q])=>q+" "+m).join(" + ")||"—";
+    return `<div class="li" style="padding:12px;margin-bottom:8px"><b>Parcel ${i+1}</b>: ${text}<br><span style="color:#5eead4;font-weight:700">${qty} pcs</span></div>`;
+  }).join("")+`<div class="li" style="padding:12px;text-align:center;font-weight:800;background:#0d9488;color:#fff">Total: ${total} pcs</div>`;
+});
 onValue(dataRef, snap=>{
   const data=snap.val();
   if(data && (Array.isArray(data.O)&&data.O.length>0 || (data.RM&&Object.keys(data.RM.rates||{}).length))){
@@ -1186,14 +1204,24 @@ function renderHist(){
 window.renderHist=renderHist;
 
 /* DAY / SUMMARY */
+let DAY_PARTY="";
 function openDay(){
+  const q=($("dayQ")||{value:""}).value.toLowerCase();
+  const parties=[...new Set(O.filter(o=>pend(o)).map(o=>o.p).filter(Boolean))];
+  const bar=$("dayParties");
+  if(bar) bar.innerHTML=`<button class="${!DAY_PARTY?"on":""}" onclick="setDayP('')" style="padding:6px 10px;border-radius:16px;background:${!DAY_PARTY?"#0d9488":"#1e293b"};color:#fff;font-size:.75rem">All</button>`+parties.map(p=>`<button onclick="setDayP('${p.replace(/'/g,"")}')" style="padding:6px 10px;border-radius:16px;background:${DAY_PARTY===p?"#0d9488":"#1e293b"};color:#fff;font-size:.75rem">${esc(p)}</button>`).join("");
   let z="";
-  O.forEach(o=>{ if(!pend(o))return; const old=D.find(x=>x.id==o.id); const v=old?old.q:Math.max(1,o.q-o.x);
+  O.forEach(o=>{
+    if(!pend(o)) return;
+    if(DAY_PARTY && o.p!==DAY_PARTY) return;
+    if(q && !(o.p+" "+o.m+" "+o.d).toLowerCase().includes(q)) return;
+    const old=D.find(x=>x.id==o.id); const v=old?old.q:Math.max(1,o.q-o.x);
     z+=`<div class="di"><input type="checkbox" class="dc" data-id="${o.id}" ${old?"checked":""}><div><b>${esc(o.p)}</b><br>${esc(o.m)} / ${esc(o.d)}${o.dickie?" · Dickie":""}<div class="muted">Left ${Math.max(0,o.q-o.x)} · ${st(o)}</div></div><input class="dq" data-id="${o.id}" type="number" min="1" value="${v}" style="width:60px"></div>`;
   });
-  $("days").innerHTML=z||`<div class="empty">No pending</div>`;
+  $("days").innerHTML=z||`<div class="empty">No matching jobs</div>`;
   openM("mDay");
 }
+window.setDayP=function(p){ DAY_PARTY=p; openDay(); };
 window.openDay=openDay;
 function saveDay(){ D=[]; document.querySelectorAll(".dc:checked").forEach(c=>{ const id=+c.dataset.id; const inp=document.querySelector('.dq[data-id="'+id+'"]'); const q=n(inp.value); if(q)D.push({id,q}); }); scheduleSave(); closeM("mDay"); fullRender(); snapToday(true); alert("Saved"); }
 window.saveDay=saveDay;
@@ -1599,10 +1627,25 @@ try{ const last=localStorage.getItem("pSnapDay"); if(last!==today()){ snapToday(
 function loadParcels(){
   const el=$("parcelView");
   if(!el) return;
-  onValue(dataRef, snap=>{
+  onValue(ref(db,"production/PARCELS"), snap=>{
+  const el=document.getElementById("parcelView");
+  if(!el) return;
+  const P=Array.isArray(snap.val())?snap.val():[];
+  if(!P.length){ el.innerHTML='<div class="empty">No parcels yet</div>'; return; }
+  let total=0;
+  el.innerHTML=P.map((p,i)=>{
+    const map={};
+    (p.items||[]).forEach(it=>{ if(it&&it.model) map[it.model]=(map[it.model]||0)+(Number(it.qty)||0); });
+    const qty=Object.values(map).reduce((s,q)=>s+q,0);
+    total+=qty;
+    const text=Object.entries(map).map(([m,q])=>q+" "+m).join(" + ")||"—";
+    return `<div class="li" style="padding:12px;margin-bottom:8px"><b>Parcel ${i+1}</b>: ${text}<br><span style="color:#5eead4;font-weight:700">${qty} pcs</span></div>`;
+  }).join("")+`<div class="li" style="padding:12px;text-align:center;font-weight:800;background:#0d9488;color:#fff">Total: ${total} pcs</div>`;
+});
+onValue(dataRef, snap=>{
     const d=snap.val()||{};
-    const P=d.PARCELS||[];
-    if(!Array.isArray(P)||!P.length){ el.innerHTML='<div class="empty">No parcels yet.<br>Dispatch worker must Confirm & Save.</div>'; return; }
+    const P=Array.isArray(d.PARCELS)?d.PARCELS:[];
+    if(!P.length){ el.innerHTML='<div class="empty">No parcels yet</div>'; return; }
     let total=0;
     el.innerHTML=P.map((p,i)=>{
       const map={};
@@ -1615,6 +1658,21 @@ function loadParcels(){
   });
 }
 window.loadParcels=loadParcels;
+
+
+let LANG="EN";
+function toggleLang(){
+  LANG=LANG==="EN"?"GU":"EN";
+  const btn=document.getElementById("langBtn");
+  if(btn) btn.textContent=LANG;
+  // simple label swap for main sections
+  const map=LANG==="GU"?{Orders:"ઓર્ડર",Stock:"સ્ટોક",Attend:"હાજરી",Log:"લોગ",Parcels:"પાર્સલ",More:"વધુ"}:{Orders:"Orders",Stock:"Stock",Attend:"Attend",Log:"Log",Parcels:"Parcels",More:"More"};
+  document.querySelectorAll(".nb").forEach(b=>{
+    const txt=b.textContent.trim();
+    if(map[txt]) b.childNodes[b.childNodes.length-1].textContent=map[txt];
+  });
+}
+window.toggleLang=toggleLang;
 
 </script>
 </body>
