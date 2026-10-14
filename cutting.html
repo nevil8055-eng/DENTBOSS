@@ -27,7 +27,7 @@ input{width:100%;padding:10px;background:#111827;color:#fff;border:1px solid var
 </style>
 </head>
 <body>
-<div class="header">Cutting Dashboard</div>
+<div class="header">Cutting Dashboard <button id="langBtn" onclick="toggleLang()" style="float:right;padding:6px 10px;font-size:.75rem;background:#1e293b">EN</button></div>
 <section id="orders" class="section on">
   <input id="q" placeholder="Search party or model..." oninput="render()">
   <div id="partyBar" class="parties"></div>
@@ -70,18 +70,49 @@ function show(id,btn){
   if(id==="rates") renderRates();
 }
 window.show=show;
+
+const GU_MAP={
+  "Baleno":"બેલેનો","Swift":"સ્વિફ્ટ","Dzire":"ડિઝાયર","Tiago":"ટિયાગો","Punch":"પંચ","PUNCH EV":"પંચ ઈવી",
+  "Innova":"ઇનોવા","INNOVA":"ઇનોવા","INNOVA CRYSTA":"ઇનોવા ક્રિસ્ટા","Ertiga":"એર્ટિગા","ERTIGA":"એર્ટિગા",
+  "Nexon":"નેક્સન","Venue":"વેન્યુ","XUV":"એક્સયુવી","Creta":"ક્રેટા","Alto":"આલ્ટો",
+  "3D CHEX BLACK":"3D ચેક્સ બ્લેક","3D BLACK":"3D બ્લેક","3D GOLD":"3D ગોલ્ડ","CRUSH BLACK":"ક્રશ બ્લેક",
+  "CAR STUDIO":"કાર સ્ટુડિયો","All":"બધા"
+};
+function gu(s){ if(LANG!=="GU") return s; return GU_MAP[s]||s; }
+
+let LANG="EN";
+const T={
+  EN:{cut:"Cut",today:"Today",orders:"Orders",rates:"Rates",search:"Search party or model...",all:"All",of:"of"},
+  GU:{cut:"કાપો",today:"આજ",orders:"ઓર્ડર",rates:"રેટ",search:"પાર્ટી અથવા મોડલ શોધો...",all:"બધા",of:"માંથી"}
+};
+function applyLang(){
+  const L=T[LANG];
+  document.getElementById("langBtn").textContent=LANG;
+  document.getElementById("q").placeholder=L.search;
+  // nav labels
+  const navs=document.querySelectorAll(".nav button");
+  if(navs[0]) navs[0].textContent=L.orders;
+  if(navs[1]) navs[1].textContent=L.today;
+  if(navs[2]) navs[2].textContent=L.rates;
+}
+function toggleLang(){
+  LANG=LANG==="EN"?"GU":"EN";
+  applyLang();
+  render();
+}
+window.toggleLang=toggleLang;
 function render(){
-  const q=(document.getElementById("q").value||"").toLowerCase();
+  const q=(document.getElementById("q").value||"").trim().toLowerCase();
   const parties=[...new Set(O.map(o=>o.p).filter(Boolean))];
   document.getElementById("partyBar").innerHTML=`<button class="${!PARTY?"on":""}" onclick="setP('')">All</button>`+parties.map(p=>`<button class="${PARTY===p?"on":""}" onclick="setP('${p.replace(/'/g,"")}')">${p}</button>`).join("");
   let L=O.slice();
   if(PARTY) L=L.filter(o=>o.p===PARTY);
-  if(q) L=L.filter(o=>(o.p+" "+o.m).toLowerCase().includes(q));
+  if(q) L=L.filter(o=>((o.p||"")+" "+(o.m||"")+" "+(o.d||"")).toLowerCase().includes(q));
   document.getElementById("list").innerHTML=L.map(o=>`
     <div class="order">
-      <div class="party">${o.p}</div>
-      <div class="model">${o.m} · ${o.d}</div>
-      <div>Cut <b>${o.c||0}</b> / ${o.q}</div>
+      <div class="party">${gu(o.p)}</div>
+      <div class="model">${gu(o.m)} · ${gu(o.d)}</div>
+      <div>${T[LANG].cut} <b>${o.c||0}</b> / ${o.q}</div>
       <div class="row">
         <button onclick="chg(${o.id},-1)">−1</button>
         <button onclick="chg(${o.id},1)">+1</button>
